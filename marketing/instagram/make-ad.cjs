@@ -1,45 +1,33 @@
 'use strict';
-// marketing/instagram/make-ad.cjs : the two Instagram Reels ads (1080x1920, 30 fps, H.264 + AAC), cut from the real
-// carols make-cards.cjs made (their story.mp4, drawn by the product's own engine, with their own songs).
-// Each ad: the brand first (the Send a Carol lockup, "Custom greeting cards that sing.", sendacarol.com), then three
-// quick steps (who it's for / add photos / we write it and sing it), then ONE example card playing with its own song
-// for a long natural stretch (cut only in the gaps between sung lines, found by measuring the song), then a small
-// sendacarol.com tag under the card's last frames. Under the brand and the steps, another carol of the same family
-// plays a little lower, from its start to the end of its second line. No price anywhere. Words sit in clear space,
-// never over a card.
+// marketing/instagram/make-ad.cjs : the two Instagram Reels ads (1080x1920, 30 fps, H.264 + AAC, -14 LUFS).
+// Made from what record.cjs recorded on a phone from the real pages (and the real carols make-cards.cjs made):
+//   1. OPEN   the card page on a phone: the wrapped present (an envelope for Thanksgiving), four taps (a touch dot and
+//             a ripple are drawn where the taps were), the unwrap, and the card coming out (the page's own blips)
+//   2. SONG   flowing on: the card plays with its song, cut only in a measured quiet gap between sung lines
+//   3. STEPS  who it's for / add a few photos / we write it and sing it (the song carries on, lower)
+//   4. SHARE  the maker's "Your carol is ready" screen on the phone, a tap on Share, then sendacarol.com (the song
+//             ends in the next quiet gap). No price anywhere. Words sit in clear space, never over the phone.
 //   node marketing/instagram/make-ad.cjs [christmas|thanksgiving]   -> marketing/instagram/out/<ad>.mp4 + <ad>-cover.jpg
 const fs = require('fs'), path = require('path'), os = require('os'), cp = require('child_process');
-const HERE = __dirname, ROOT = path.join(HERE, '..', '..'), CARDS = process.env.ADS_DIR || '/tmp/carol-time/ads', OUTDIR = path.join(HERE, 'out');
+const HERE = __dirname, ROOT = path.join(HERE, '..', '..'), CARDS = process.env.ADS_DIR || '/tmp/carol-time/ads', REC = process.env.REC_DIR || '/tmp/carol-time/rec', OUTDIR = path.join(HERE, 'out');
 const canvas = require(path.join(ROOT, 'node_modules', '@napi-rs', 'canvas'));
 require(path.join(ROOT, 'fonts.js')).registerNode(canvas, path.join(ROOT, 'fonts'));
-const Brand = require(path.join(ROOT, 'brand.js')), CFG = require(path.join(ROOT, 'config.js')), B = CFG.brand;
+const CFG = require(path.join(ROOT, 'config.js')), B = CFG.brand;
 
-const W = 1080, H = 1920, FPS = 30, TAG = 2.0;
-// the card on screen: two thirds of its size, the top band (y < 260) and the bottom band (y > 1560) left for words
-const CW = 720, CH = 1280, CY = 268;
-// Every cut point below was picked by measuring the song's vocal band (300-3500 Hz, 20 ms windows) around the
-// line boundaries the take recorded, and cutting in the quiet gap, never inside a sung word.
-//   bed:     [slug, end]          another carol from 0 s to the gap after its second line, under the brand + steps
-//   example: [slug, from, to]     the card and its song; fadeIn when it starts mid-song, fadeOut before `to`
-//   tag:     [slug, from]|null    a separate 2 s window (the card's sign-off and the song's last chord); null = the
-//                                 tag sits over the example's own last 2 s
+const W = 1080, H = 1920, FPS = 30, STEP = 2.2;
+// Song cut points, picked by measuring each song's vocal band (300-3500 Hz, 20 ms windows) around the line
+// boundaries the take recorded, and cutting in the quiet gap, never inside a sung word:
+//   card: where the card section ends and the steps begin (the song carries on, lower, from there)
+//   end:  where the song fades out, at the end of the share screen
 const ADS = {
-  christmas: {
-    pill: 'Christmas cards that sing', bg: ['#8a1538', '#1d1230'], fall: 'snow', step: 2.4,
-    bed: { slug: 'pemberton-theo', end: 11.0 },                                    // "...Counting presents: one, two, three!" ends; line 3 enters at 11.1
-    example: { slug: 'pemberton-dad', from: 0, to: 18.45, fadeIn: 0, fadeOut: 0.3, label: 'For Dad' },   // intro + the whole verse; line 5 enters at 18.6
-    tag: { slug: 'pemberton-dad', from: 34.3 },                                    // the sign-off "Order in the court, Dad!" and the closing chord (last word ends 34.1)
-    typed: 'It\'s for Dad. He ate Santa\'s cookies and blamed the dog.',
-    photos: ['5860043', '5860044', '5860105'],
-  },
-  thanksgiving: {
-    pill: 'Thanksgiving cards that sing', bg: ['#b4541c', '#3a1a12'], fall: 'leaves', step: 2.2,
-    bed: { slug: 'whitfield-dad', end: 9.78 },                                     // "...stacked up to the sky" ends 9.72; line 3 enters at 9.86
-    example: { slug: 'whitfield-grandparents', from: 19.6, to: 40.046, fadeIn: 0.15, fadeOut: 0, label: 'For Grandma & Grandpa' },  // gap before "Here's to Rose and here's to Hank" (20.5) to the song's own end
-    tag: null,
-    typed: 'It\'s for Grandma Rose and Grandpa Hank. Every Thanksgiving is at their house.',
-    photos: ['5591206', '5591173', '5591233'],
-  },
+  christmas: { pill: 'Christmas cards that sing', bg: ['#8a1538', '#1d1230'], fall: 'snow', slug: 'pemberton-dad',
+    card: 18.45,   // after "...but never know the words to any song." (line 5 enters at 18.6)
+    end: 30.0,     // after "Naughty or nice? The verdict's in: it's nice!" (the last line enters at 30.1)
+    typed: 'It\'s for Dad. He ate Santa\'s cookies and blamed the dog.', photos: ['5860043', '5860044', '5860105'] },
+  thanksgiving: { pill: 'Thanksgiving cards that sing', bg: ['#b4541c', '#3a1a12'], fall: 'leaves', slug: 'whitfield-grandparents',
+    card: 19.9,    // after "...And we laugh just as hard, all of us folks." (the chorus enters at 20.5)
+    end: 32.45,    // after "No one leaves hungry, no one feels alone," (the last line enters at 32.6)
+    typed: 'It\'s for Grandma Rose and Grandpa Hank. Every Thanksgiving is at their house.', photos: ['5591206', '5591173', '5591233'] },
 };
 
 // ---------- helpers ----------
@@ -50,11 +38,8 @@ function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w
 function ff(args) { const r = cp.spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y'].concat(args), { maxBuffer: 1 << 26 }); if (r.status) throw new Error('ffmpeg: ' + String(r.stderr).slice(-600)); return r; }
 function fitFont(c, text, family, size, maxW) { let s = size; c.font = s + 'px "' + family + '"'; while (c.measureText(text).width > maxW && s > 30) { s -= 2; c.font = s + 'px "' + family + '"'; } return s; }
 function note(c, x, y, s, col) { c.save(); c.translate(x, y); c.fillStyle = col; c.beginPath(); c.ellipse(0, 0, s * 0.55, s * 0.4, -0.4, 0, Math.PI * 2); c.fill(); c.fillRect(s * 0.38, -s * 1.6, s * 0.16, s * 1.6); c.beginPath(); c.moveTo(s * 0.54, -s * 1.6); c.quadraticCurveTo(s * 1.2, -s * 1.2, s * 1.0, -s * 0.6); c.quadraticCurveTo(s * 0.9, -s * 1.0, s * 0.54, -s * 1.05); c.fill(); c.restore(); }
-function heart(c, x, y, s, col) { c.save(); c.translate(x, y); c.fillStyle = col; c.beginPath(); c.moveTo(0, s * 0.35); c.bezierCurveTo(-s * 1.1, -s * 0.35, -s * 0.45, -s * 1.05, 0, -s * 0.45); c.bezierCurveTo(s * 0.45, -s * 1.05, s * 1.1, -s * 0.35, 0, s * 0.35); c.fill(); c.restore(); }
 function sparkle(c, x, y, s, col) { c.save(); c.translate(x, y); c.fillStyle = col; c.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, r = i % 2 ? s * 0.25 : s; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.closePath(); c.fill(); c.restore(); }
 function leaf(c, x, y, r, col, rot) { c.save(); c.translate(x, y); c.rotate(rot); c.beginPath(); c.moveTo(0, -r); c.quadraticCurveTo(r * 0.9, -r * 0.2, 0, r); c.quadraticCurveTo(-r * 0.9, -r * 0.2, 0, -r); c.fillStyle = col; c.fill(); c.strokeStyle = 'rgba(0,0,0,.18)'; c.lineWidth = 2; c.beginPath(); c.moveTo(0, -r * 0.8); c.lineTo(0, r); c.stroke(); c.restore(); }
-
-// the background: the holiday's gradient, things falling and a few twinkles (the same pattern every run)
 function makeBg(ad) {
   let s = 7; const rnd = function () { s = (s * 16807) % 2147483647; return s / 2147483647; };
   const bits = Array.from({ length: ad.fall === 'snow' ? 90 : 34 }, function () { return { x: rnd() * W, y: rnd() * H, r: ad.fall === 'snow' ? 3 + rnd() * 8 : 16 + rnd() * 16, v: 60 + rnd() * 120, sway: rnd() * 6, rot: rnd() * 6, col: ['#e8892a', '#d9a520', '#c2410c', '#f2b632', '#b45309'][Math.floor(rnd() * 5)] }; });
@@ -62,11 +47,10 @@ function makeBg(ad) {
   return function (c, t) {
     const g = c.createRadialGradient(W / 2, H * 0.42, 100, W / 2, H * 0.5, H * 0.75); g.addColorStop(0, ad.bg[0]); g.addColorStop(1, ad.bg[1]);
     c.fillStyle = g; c.fillRect(0, 0, W, H);
-    tw.forEach(function (k) { const a = 0.25 + 0.75 * Math.max(0, Math.sin(t * 3 + k.p)); c.globalAlpha = a * 0.8; sparkle(c, k.x, k.y, k.s, B.gold); }); c.globalAlpha = 1;
+    tw.forEach(function (k) { c.globalAlpha = (0.25 + 0.75 * Math.max(0, Math.sin(t * 3 + k.p))) * 0.8; sparkle(c, k.x, k.y, k.s, B.gold); }); c.globalAlpha = 1;
     bits.forEach(function (b) {
       const y = (b.y + t * b.v) % (H + 80) - 40, x = b.x + Math.sin(t * 1.3 + b.sway) * 30;
-      if (ad.fall === 'snow') { c.globalAlpha = 0.75; c.fillStyle = '#fff'; c.beginPath(); c.arc(x, y, b.r, 0, Math.PI * 2); c.fill(); }
-      else { c.globalAlpha = 0.9; leaf(c, x, y, b.r, b.col, b.rot + t * 1.5); }
+      if (ad.fall === 'snow') { c.globalAlpha = 0.75; c.fillStyle = '#fff'; c.beginPath(); c.arc(x, y, b.r, 0, Math.PI * 2); c.fill(); } else { c.globalAlpha = 0.9; leaf(c, x, y, b.r, b.col, b.rot + t * 1.5); }
     });
     c.globalAlpha = 1;
   };
@@ -76,36 +60,55 @@ function pill(c, text, y) {
   rr(c, (W - w) / 2, y - 40, w, 80, 40); c.fillStyle = B.cream; c.fill();
   c.fillStyle = B.berry; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, W / 2, y + 2); c.restore();
 }
-function bigText(c, text, y, size, k, color, family) {   // a word line that pops in (k 0..1), with a soft shadow
+function bigText(c, text, y, size, k, color, family) {
   if (k <= 0) return;
   c.save(); const s = 0.6 + 0.4 * easeBack(k); c.globalAlpha = clamp(k * 3, 0, 1);
   c.translate(W / 2, y); c.scale(s, s); fitFont(c, text, family || 'CT Lobster', size, W - 120);
   c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 18; c.shadowOffsetY = 6;
   c.fillStyle = color || B.cream; c.fillText(text, 0, 0); c.restore();
 }
-function cardAt(c, img, k, tilt) {   // the card in its white border, k = its pop-in (0..1)
-  const scale = 0.8 + 0.2 * easeBack(k);
-  c.save(); c.translate(W / 2 + (1 - easeOut(k)) * 420, CY + CH / 2); c.rotate(tilt); c.scale(scale, scale);
-  c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 40; c.shadowOffsetY = 16; rr(c, -CW / 2 - 12, -CH / 2 - 12, CW + 24, CH + 24, 34); c.fillStyle = '#fff'; c.fill(); c.shadowColor = 'transparent';
-  c.save(); rr(c, -CW / 2, -CH / 2, CW, CH, 24); c.clip(); c.drawImage(img, -CW / 2, -CH / 2, CW, CH); c.restore();
+
+// ---------- the phone: an iPhone-sized screen (393 x 852 points): status bar, the page (393 x 660, as recorded), Safari's bar ----------
+const PT = { w: 393, h: 852, status: 54, page: 660 };
+function phone(c, img, o) {   // o = { cx, top, k (pixels per point), url, pop (0..1) }
+  const sw = PT.w * o.k, sh = PT.h * o.k, bz = 18 * o.k / 1.7, x = o.cx - sw / 2, y = o.top, s = 0.85 + 0.15 * easeBack(o.pop == null ? 1 : o.pop);
+  c.save(); c.translate(o.cx, y + sh / 2); c.scale(s, s); c.translate(-o.cx, -(y + sh / 2));
+  c.shadowColor = 'rgba(0,0,0,.55)'; c.shadowBlur = 50; c.shadowOffsetY = 20; rr(c, x - bz, y - bz, sw + bz * 2, sh + bz * 2, 58 * o.k / 1.7 + bz); c.fillStyle = '#16121c'; c.fill(); c.shadowColor = 'transparent';
+  c.save(); rr(c, x, y, sw, sh, 52 * o.k / 1.7); c.clip();
+  c.fillStyle = '#0d0b10'; c.fillRect(x, y, sw, sh);
+  c.drawImage(img, x, y + PT.status * o.k, sw, PT.page * o.k);
+  // status bar: the time, the island, signal and battery
+  c.fillStyle = '#fff'; c.font = Math.round(16 * o.k) + 'px "CT Sans Semi"'; c.textBaseline = 'middle'; c.textAlign = 'center'; c.fillText('9:41', x + 62 * o.k, y + 30 * o.k);
+  rr(c, o.cx - 62 * o.k, y + 12 * o.k, 124 * o.k, 36 * o.k, 18 * o.k); c.fillStyle = '#000'; c.fill();
+  c.fillStyle = '#fff'; for (let i = 0; i < 4; i++) c.fillRect(x + sw - 98 * o.k + i * 6 * o.k, y + (34 - 3 * i) * o.k, 4 * o.k, (5 + 3 * i) * o.k);
+  c.strokeStyle = '#fff'; c.lineWidth = 1.5 * o.k; rr(c, x + sw - 62 * o.k, y + 24 * o.k, 26 * o.k, 13 * o.k, 4 * o.k); c.stroke(); c.fillRect(x + sw - 59 * o.k, y + 27 * o.k, 18 * o.k, 7 * o.k);
+  // Safari's bottom bar with the address
+  const by = y + (PT.status + PT.page) * o.k, bh = sh - (PT.status + PT.page) * o.k;
+  c.fillStyle = '#1f1b24'; c.fillRect(x, by, sw, bh);
+  rr(c, x + 14 * o.k, by + 10 * o.k, sw - 28 * o.k, 44 * o.k, 14 * o.k); c.fillStyle = '#3a3542'; c.fill();
+  c.fillStyle = '#fff'; c.font = Math.round(16 * o.k) + 'px "CT Sans Semi"'; c.textAlign = 'center'; c.fillText(o.url, o.cx, by + 33 * o.k);
+  c.fillStyle = 'rgba(255,255,255,.85)'; rr(c, o.cx - 67 * o.k, y + sh - 13 * o.k, 134 * o.k, 5 * o.k, 3 * o.k); c.fill();
+  c.restore(); c.restore();
+}
+// a finger's touch on the screen, as screen recordings show it: a soft dot that presses, and a ripple
+function touch(c, x, y, k, press, ripple, alpha) {
+  if (alpha <= 0) return;
+  c.save(); c.globalAlpha = alpha;
+  if (ripple > 0 && ripple < 1) { c.strokeStyle = 'rgba(255,255,255,' + (0.9 * (1 - ripple)) + ')'; c.lineWidth = 6 * (1 - ripple) + 2; c.beginPath(); c.arc(x, y, (24 + 70 * easeOut(ripple)) * k / 1.7, 0, Math.PI * 2); c.stroke(); }
+  const r = (30 - 8 * press) * k / 1.7; c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 16; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fillStyle = 'rgba(255,255,255,' + (0.55 + 0.25 * press) + ')'; c.fill();
+  c.shadowColor = 'transparent'; c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = 3; c.stroke();
   c.restore();
 }
+function touches(c, taps, t, o) {   // the dot comes in before the first tap, presses at each, leaves after the last
+  if (!taps.length) return;
+  const first = taps[0].t, last = taps[taps.length - 1].t, alpha = clamp((t - (first - 0.35)) / 0.2, 0, 1) * clamp(1 - (t - (last + 0.35)) / 0.2, 0, 1);
+  let i = 0; while (i < taps.length - 1 && t > (taps[i].t + taps[i + 1].t) / 2) i++;
+  const tp = taps[i], dt = t - tp.t, press = dt > -0.08 && dt < 0.12 ? 1 - Math.abs(dt - 0.02) / 0.1 : 0;
+  let ripple = 0; taps.forEach(function (q) { const d = t - q.t; if (d >= 0 && d < 0.45) ripple = d / 0.45; });
+  touch(c, o.cx - PT.w * o.k / 2 + tp.x * o.k, o.top + (PT.status + tp.y) * o.k, o.k, clamp(press, 0, 1), ripple, alpha);
+}
 
-// ---------- the parts ----------
-function extract(slug, from, len, dir, name) {   // a card's frames for a window, at the size it is shown
-  const d = path.join(dir, name); fs.mkdirSync(d, { recursive: true });
-  ff(['-ss', String(from), '-t', String(len), '-i', path.join(CARDS, slug, 'story.mp4'), '-vf', 'fps=' + FPS + ',scale=' + CW + ':' + CH + ':flags=lanczos', '-q:v', '2', path.join(d, 'f%04d.jpg')]);
-  return fs.readdirSync(d).filter(function (f) { return /\.jpg$/.test(f); }).sort().map(function (f) { return path.join(d, f); });
-}
-function brandBlock(c, ad, te, tAll, mark) {   // the lockup as brand.js draws it, the tagline and the domain. No price.
-  const k1 = easeBack((te + 0.2) / 0.4), k2 = clamp((te + 0.1) / 0.4, 0, 1), k3 = clamp((te - 0.1) / 0.4, 0, 1), k4 = clamp((te - 0.3) / 0.4, 0, 1);
-  const mh = 170; c.font = Math.round(mh * 0.74) + 'px "CT Lobster"'; const lw = mh * 1.12 + c.measureText(CFG.name).width, lx = (W - lw) / 2, ly = 740;
-  c.save(); c.translate(lx + mh / 2, ly + mh / 2 + Math.sin(tAll * 4) * 6); c.scale(k1, k1); c.rotate(Math.sin(tAll * 3) * 0.06); c.drawImage(mark, -mh / 2, -mh / 2, mh, mh); c.restore();
-  if (k2 > 0) { c.save(); c.globalAlpha = clamp(k2 * 2.5, 0, 1); c.font = Math.round(mh * 0.74) + 'px "CT Lobster"'; c.fillStyle = B.cream; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 18; c.shadowOffsetY = 6; c.fillText(CFG.name, lx + mh * 1.12 + (1 - easeOut(k2)) * 60, ly + mh * 0.8); c.restore(); }
-  bigText(c, 'Custom greeting cards that sing.', 1060, 58, k3, B.gold, 'CT Sans Semi');
-  bigText(c, CFG.domain, 1210, 80, k4, B.cream, 'CT Sans Bold');
-  for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2, r = 180 + easeOut(te / 1.2) * 300; c.globalAlpha = clamp(1 - te / 1.6, 0, 1); sparkle(c, W / 2 + Math.cos(a) * r * 1.6, 825 + Math.sin(a) * r, 16, i % 2 ? B.gold : B.cream); } c.globalAlpha = 1;
-}
+// ---------- the steps ----------
 function stepHead(c, n, text, ts) {
   const k = clamp(ts / 0.3, 0, 1);
   c.save(); const s = easeBack(k); c.translate(W / 2, 400); c.scale(s, s);
@@ -117,7 +120,7 @@ function drawStep(c, ad, n, ts, tAll, pics, poster) {
   c.save(); c.translate(slide, 0);
   if (n === 1) {
     stepHead(c, 1, 'Tell us who it\'s for', ts);
-    const text = ad.typed, shown = text.slice(0, Math.floor(clamp((ts - 0.2) / (ad.step - 0.8), 0, 1) * text.length));
+    const text = ad.typed, shown = text.slice(0, Math.floor(clamp((ts - 0.2) / (STEP - 0.8), 0, 1) * text.length));
     c.font = '50px "CT Sans Semi"'; const lines = [], words = shown.split(' '); let cur = '';
     words.forEach(function (w) { const t = cur ? cur + ' ' + w : w; if (c.measureText(t).width > 760) { lines.push(cur); cur = w; } else cur = t; }); lines.push(cur);
     const bh = Math.max(1, lines.length) * 70 + 70, by = 840 - bh / 2;
@@ -127,8 +130,7 @@ function drawStep(c, ad, n, ts, tAll, pics, poster) {
     stepHead(c, 2, 'Add a few photos', ts);
     pics.forEach(function (img, i) {
       const k = easeBack((ts - 0.15 - i * 0.18) / 0.4); if (k <= 0) return;
-      const fx = [300, 540, 780][i], fy = [880, 820, 880][i], rot = [-0.16, 0.03, 0.15][i], from = [-700, 0, 700][i];
-      const pw = 430, ph = pw * img.height / img.width;
+      const fx = [300, 540, 780][i], fy = [880, 820, 880][i], rot = [-0.16, 0.03, 0.15][i], from = [-700, 0, 700][i], pw = 430, ph = pw * img.height / img.width;
       c.save(); c.translate(fx + from * (1 - k), fy + (i === 1 ? -600 : 300) * (1 - k)); c.rotate(rot * k);
       c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 30; c.shadowOffsetY = 12; c.fillStyle = '#fff'; c.fillRect(-pw / 2 - 18, -ph / 2 - 18, pw + 36, ph + 80); c.shadowColor = 'transparent';
       c.drawImage(img, -pw / 2, -ph / 2, pw, ph); c.restore();
@@ -143,24 +145,15 @@ function drawStep(c, ad, n, ts, tAll, pics, poster) {
   }
   c.restore();
 }
-function label(c, text, k, tAll) {   // the words in the band under the card, with a note and a heart either side
-  bigText(c, text, 1648, 88, k, B.cream);
-  if (k > 0.5) { c.save(); fitFont(c, text, 'CT Lobster', 88, W - 120); const w = Math.min(c.measureText(text).width, W - 120), bob = Math.sin(tAll * 8) * 6; c.restore(); if (w < W - 260) { note(c, W / 2 - w / 2 - 50, 1630 + bob, 22, B.gold); heart(c, W / 2 + w / 2 + 48, 1618 - bob, 26, B.coral); } }
-}
 
-// ---------- the sound: the bed (lower, faded out in its gap), then the example, then the tag window ----------
-function sound(ad, plan, file) {
-  const inputs = [], parts = [], b = ad.bed, e = ad.example;
-  inputs.push('-ss', '0', '-t', String(b.end), '-i', path.join(CARDS, b.slug, 'story.mp4'));
-  parts.push('[0:a]aresample=44100,aformat=channel_layouts=stereo,volume=0.6,afade=t=out:st=' + (b.end - 0.25).toFixed(3) + ':d=0.25[a0]');
-  const elen = e.to - e.from;
-  inputs.push('-ss', String(e.from), '-t', String(elen), '-i', path.join(CARDS, e.slug, 'story.mp4'));
-  parts.push('[1:a]aresample=44100,aformat=channel_layouts=stereo' + (e.fadeIn ? ',afade=t=in:d=' + e.fadeIn : '') + (e.fadeOut ? ',afade=t=out:st=' + (elen - e.fadeOut).toFixed(3) + ':d=' + e.fadeOut : '') + '[a1]');
-  let n = 2;
-  if (ad.tag) { inputs.push('-ss', String(ad.tag.from), '-t', String(TAG), '-i', path.join(CARDS, ad.tag.slug, 'story.mp4')); parts.push('[2:a]aresample=44100,aformat=channel_layouts=stereo,afade=t=in:d=0.05,afade=t=out:st=' + (TAG - 0.3) + ':d=0.3[a2]'); n = 3; }
-  const cat = parts.join(';') + ';' + Array.from({ length: n }, function (x, i) { return '[a' + i + ']'; }).join('') + 'concat=n=' + n + ':v=0:a=1[mix]';
+// ---------- the sound: the page's blips, the song from the moment the card starts playing (lower under the steps
+// and the share screen), faded out in its quiet gap at the very end; then two-pass loudnorm to -14 LUFS ----------
+function sound(ad, rec, plan, file) {
+  const song = path.join(CARDS, ad.slug, 'song.m4a'), v0 = plan.card - plan.t0;   // song time when the steps begin
+  const f = '[1:a]aresample=44100,aformat=channel_layouts=stereo,atrim=0:' + ad.end + ",volume='if(lt(t," + v0 + "),1,max(0.6,1-(t-" + v0 + ')/0.4*0.4))\':eval=frame,afade=t=out:st=' + (ad.end - 0.35) + ':d=0.35,adelay=' + Math.round(plan.t0 * 1000) + '|' + Math.round(plan.t0 * 1000) + '[s];' +
+    '[0:a]aresample=44100,aformat=channel_layouts=stereo[x];[x][s]amix=inputs=2:duration=longest:normalize=0[mix]';
   const raw = file + '.raw.wav';
-  ff(inputs.concat(['-filter_complex', cat, '-map', '[mix]', '-t', plan.total.toFixed(3), raw]));
+  ff(['-i', rec.sfx, '-i', song, '-filter_complex', f, '-map', '[mix]', '-t', plan.total.toFixed(3), raw]);
   const m = cp.spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', raw, '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json', '-f', 'null', '-'], { encoding: 'utf8', maxBuffer: 1 << 26 });
   const j = JSON.parse(/\{[\s\S]*\}/.exec(m.stderr)[0]);
   ff(['-i', raw, '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11:measured_I=' + j.input_i + ':measured_TP=' + j.input_tp + ':measured_LRA=' + j.input_lra + ':measured_thresh=' + j.input_thresh + ':offset=' + j.target_offset + ':linear=true', '-ar', '44100', file]);
@@ -168,48 +161,45 @@ function sound(ad, plan, file) {
 }
 
 async function make(name) {
-  const ad = ADS[name], e = ad.example, tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sac-ad-')), bg = makeBg(ad);
+  const ad = ADS[name], rec = JSON.parse(fs.readFileSync(path.join(REC, name, 'rec.json'), 'utf8')), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sac-ad-')), bg = makeBg(ad);
   fs.mkdirSync(OUTDIR, { recursive: true });
-  // the plan: brand until the bed's gap minus the three steps, the steps, the example, the tag
-  const plan = { brand: ad.bed.end - 3 * ad.step }; plan.steps = plan.brand + 3 * ad.step; plan.example = plan.steps + (e.to - e.from); plan.total = plan.example + (ad.tag ? TAG : 0);
-  const exFrames = extract(e.slug, e.from, e.to - e.from, tmp, 'example'), tagFrames = ad.tag ? extract(ad.tag.slug, ad.tag.from, TAG, tmp, 'tag') : null;
-  const pics = []; for (const p of ad.photos) pics.push(await canvas.loadImage(fs.readFileSync(path.join(HERE, 'photos', 'pexels-' + p + '.jpg'))));
-  const poster = await canvas.loadImage(fs.readFileSync(path.join(CARDS, e.slug, 'poster-story.jpg')));
-  const mark = await canvas.loadImage(Buffer.from(Brand.markSvg({ size: 600 })));
-  const wav = path.join(tmp, 'sound.wav'); sound(ad, plan, wav);
+  // the plan, in seconds of the ad: t0 = where the song's 0 s falls (the card page's own clock said so, frame by frame)
+  const p = rec.playFrame, plan = { t0: p / FPS - rec.clock[p].t };
+  plan.card = plan.t0 + ad.card; plan.steps = plan.card + 3 * STEP; plan.total = plan.t0 + ad.end;
+  const openFrame = function (t) { return path.join(REC, name, 'open', 'f' + String(clamp(Math.round(t * FPS) + 1, 1, rec.openFrames)).padStart(5, '0') + '.jpg'); };
+  const shareFrame = function (t) { return path.join(REC, name, 'share', 'f' + String(clamp(Math.round(t * FPS) + 1, 1, rec.shareFrames)).padStart(5, '0') + '.jpg'); };
+  const pics = []; for (const q of ad.photos) pics.push(await canvas.loadImage(fs.readFileSync(path.join(HERE, 'photos', 'pexels-' + q + '.jpg'))));
+  const poster = await canvas.loadImage(fs.readFileSync(path.join(CARDS, ad.slug, 'poster-story.jpg')));
+  const wav = path.join(tmp, 'sound.wav'); sound(ad, rec, plan, wav);
+  const BIG = { cx: W / 2, top: 262, k: 1490 / PT.h, url: CFG.domain + '/' + ad.slug }, SMALL = { cx: W / 2, top: 236, k: 1270 / PT.h, url: CFG.domain + '/make' };
+  const share = rec.buttons[0], tapAt = rec.shareScrollEnd / FPS + 0.45;   // the Share button, once the screen has glided to it
   const n = Math.round(plan.total * FPS), silent = path.join(tmp, 'video.mp4'), out = path.join(OUTDIR, name + '.mp4');
-  const p = cp.spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', W + 'x' + H, '-r', String(FPS), '-i', 'pipe:0', '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-g', String(FPS), silent], { stdio: ['pipe', 'ignore', 'inherit'] });
-  const done = new Promise(function (ok, no) { p.on('close', function (code) { if (code) no(new Error('ffmpeg ' + code)); else ok(); }); });
-  const cv = canvas.createCanvas(W, H), c = cv.getContext('2d'), tagFrom = ad.tag ? plan.example : plan.example - TAG;
-  const frame = async function (list, t) { return canvas.loadImage(list[clamp(Math.floor(t * FPS), 0, list.length - 1)]); };
+  const pr = cp.spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', W + 'x' + H, '-r', String(FPS), '-i', 'pipe:0', '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-g', String(FPS), silent], { stdio: ['pipe', 'ignore', 'inherit'] });
+  const done = new Promise(function (ok, no) { pr.on('close', function (code) { if (code) no(new Error('ffmpeg ' + code)); else ok(); }); });
+  const cv = canvas.createCanvas(W, H), c = cv.getContext('2d');
+  const drawShare = async function (ts, t) {
+    pill(c, 'Share it or send it', 150);
+    phone(c, await canvas.loadImage(shareFrame(ts)), Object.assign({ pop: clamp(ts / 0.3, 0, 1) }, SMALL));
+    touches(c, [{ t: tapAt, x: share.x, y: share.y }], ts, SMALL);
+    bigText(c, CFG.domain, 1640, 84, clamp((ts - tapAt - 0.3) / 0.35, 0, 1), B.cream, 'CT Sans Bold');
+  };
   for (let f = 0; f < n; f++) {
     const t = f / FPS; c.save(); bg(c, t);
-    if (t < plan.brand) brandBlock(c, ad, t, t, mark);
-    else if (t < plan.steps) { const s = Math.floor((t - plan.brand) / ad.step); drawStep(c, ad, s + 1, t - plan.brand - s * ad.step, t, pics, poster); }
-    else {
-      const tc = t - plan.steps, inTag = t >= tagFrom, img = ad.tag && inTag ? await frame(tagFrames, t - tagFrom) : await frame(exFrames, Math.min(tc, e.to - e.from - 1 / FPS));
-      pill(c, ad.pill, 168);
-      cardAt(c, img, clamp(tc / 0.32, 0, 1), (1.2 + (1 - clamp(tc / 0.32, 0, 1)) * 7) * Math.PI / 180);
-      if (inTag) bigText(c, CFG.domain, 1640, 64, clamp((t - tagFrom) / 0.3, 0, 1), B.cream, 'CT Sans Bold');
-      else label(c, e.label, clamp((tc - 0.12) / 0.35, 0, 1), t);
-      if (tc < 0.12) { c.fillStyle = 'rgba(255,255,255,' + (0.75 * (1 - tc / 0.12)) + ')'; c.fillRect(0, 0, W, H); }
-      if (ad.tag && inTag && t - tagFrom < 0.08) { c.fillStyle = 'rgba(255,255,255,' + (0.5 * (1 - (t - tagFrom) / 0.08)) + ')'; c.fillRect(0, 0, W, H); }
-    }
+    if (t < plan.card) { pill(c, ad.pill, 168); phone(c, await canvas.loadImage(openFrame(t)), BIG); touches(c, rec.taps, t, BIG); }
+    else if (t < plan.steps) { const s = Math.floor((t - plan.card) / STEP); drawStep(c, ad, s + 1, t - plan.card - s * STEP, t, pics, poster); }
+    else await drawShare(t - plan.steps, t);
     c.restore();
-    if (!p.stdin.write(cv.data())) await new Promise(function (ok) { p.stdin.once('drain', ok); });
+    if (!pr.stdin.write(cv.data())) await new Promise(function (ok) { pr.stdin.once('drain', ok); });
   }
-  p.stdin.end(); await done;
+  pr.stdin.end(); await done;
   ff(['-i', silent, '-i', wav, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-ar', '44100', '-shortest', '-movflags', '+faststart', out]);
-  // the cover: the example card at a photo moment, the pill above and the domain below
-  c.save(); bg(c, 2); pill(c, ad.pill, 168);
-  cardAt(c, await frame(exFrames, name === 'christmas' ? 5.5 : 1.6), 1, -0.02);
-  bigText(c, CFG.domain, 1648, 76, 1, B.cream, 'CT Sans Bold'); c.restore();
+  // the cover: the present about to be opened, the finger on it
+  const ct = rec.taps[2].t; c.save(); bg(c, 2); pill(c, ad.pill, 168); phone(c, await canvas.loadImage(openFrame(ct)), BIG); touch(c, BIG.cx - PT.w * BIG.k / 2 + rec.taps[2].x * BIG.k, BIG.top + (PT.status + rec.taps[2].y) * BIG.k, BIG.k, 1, 0.3, 1); c.restore();
   fs.writeFileSync(path.join(OUTDIR, name + '-cover.jpg'), await cv.encode('jpeg', 90));
   fs.rmSync(tmp, { recursive: true, force: true });
-  console.log(name + ': ' + out + ' (' + plan.total.toFixed(2) + ' s; brand 0-' + plan.brand.toFixed(2) + ', steps to ' + plan.steps.toFixed(2) + ', example ' + e.slug + ' song ' + e.from + '-' + e.to + ' s at ' + plan.steps.toFixed(2) + '-' + plan.example.toFixed(2) + (ad.tag ? ', tag song ' + ad.tag.from + '-' + (ad.tag.from + TAG) : ', tag over its last 2 s') + ')');
+  console.log(name + ': ' + out + ' (' + plan.total.toFixed(2) + ' s; open + card 0-' + plan.card.toFixed(2) + ' (song 0-' + ad.card + ' s from ' + plan.t0.toFixed(2) + '), steps to ' + plan.steps.toFixed(2) + ', share to ' + plan.total.toFixed(2) + ' (song on to ' + ad.end + ' s))');
 }
 
 (async function () {
-  const which = process.argv[2] ? [process.argv[2]] : Object.keys(ADS);
-  for (const w of which) await make(w);
+  for (const w of (process.argv[2] ? [process.argv[2]] : Object.keys(ADS))) await make(w);
 })().catch(function (e) { console.error(e); process.exit(1); });
