@@ -72,7 +72,7 @@ origin into it.
    full screen with sound; toys during and after (tap a character and it dances, drag to make it snow or sparkle
    harder, pop an ornament or balloon per photo, ring the bells in time for a score); then three plain buttons: Save
    the video, Share, Make your own; and "Report this card".
-7. **Send by email** from the product to up to 10 people per carol, with a short note. Never a marketing list.
+7. **Send by email** from the product to the people the maker knows (no limit per carol; the account's daily email cap still holds), with a short note. Never a marketing list.
 8. **Take down / put back / delete** at any time. A deleted carol's page answers 404 and its media is removed from storage.
 
 ### Occasions

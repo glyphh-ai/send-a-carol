@@ -157,7 +157,7 @@
 
   // ---------- a. sign in ----------
   function signIn() {
-    const me = S.me, box = h('div', { class: 'signin' }, avatar('lg'), h('h1', { text: 'First, who is singing?' }), h('p', { text: 'Sign in so your carols are yours on every device. It takes a few seconds.' }));
+    const me = S.me, box = h('div', { class: 'signin' }, avatar('lg'), h('h1', { text: 'Sign in' }), h('p', { text: 'Sign in so your carols are yours on every device. It takes a few seconds.' }));
     let poll = 0; S.clean.push(function () { clearInterval(poll); });
     const entered = async function () { const r = await SAC.read('/api/me'); if (r && r.user) { clearInterval(poll); S.me = r; S.user = r.user; header(); const q = new URLSearchParams(location.search); if (q.get('paid')) await paidBack(q); route(); return true; } return false; };
     if (!me.google && !me.emailSignIn) { box.appendChild(h('div', { class: 'banner', text: 'Sign-in is not open yet. Come back soon.' })); return h('div', { class: 'center-screen' }, box); }
@@ -217,7 +217,7 @@
   }
 
   // ---------- e. the pay sheet ----------
-  function includes() { const L = S.cfg.limits; return h('ul', { class: 'ticks small' }, h('li', { text: 'The song, sung for you, with up to ' + L.takes + ' takes' }), h('li', { text: 'The video in two shapes, and the card\'s own page' }), h('li', { text: 'Sending it by email to up to ' + L.recipients + ' people' })); }
+  function includes() { const L = S.cfg.limits; return h('ul', { class: 'ticks small' }, h('li', { text: 'The song, sung for you, with up to ' + L.takes + ' takes' }), h('li', { text: 'The video in two shapes, and the card\'s own page' }), h('li', { text: 'Email it from here' })); }
   function pay(o) {
     o = o || {}; SAC.hold('paying', true);
     const cfg = S.cfg, packs = cfg.packs, one = packs.find(function (p) { return p.credits === 1 && !p.soon; }), best = packs.filter(function (p) { return !p.soon && p.credits > 1; })[0], err = h('p', { class: 'err', role: 'alert' }), rows = [], list = [];
@@ -644,7 +644,7 @@
         h('section', { class: 'card panel who' }, h('h2', {}, 'Who it is for', h('small', { text: 'On the card, in its link and in the email' })), whoFields(E.answers, function () { touched(); look('title'); })),
         h('section', { class: 'card panel' }, h('h2', {}, 'Photos', h('small', { text: 'Drag, or use the arrows, to reorder' })), strip()),
         lookPanel(), namePanel(),
-        !c.takes.length && !c.paid ? h('section', { class: 'card panel' }, h('h2', { text: 'Housekeeping' }), h('div', { class: 'rowbtns' }, h('button', { class: 'btn danger sm', type: 'button', text: 'Delete this draft', onclick: async function () { if (!await confirmBox({ title: 'Delete this draft?', text: 'Its words and photos are removed for good.', yes: 'Delete it', danger: true })) return; clearTimeout(E.saveT); E.dirty = false; const r = await SAC.call('/api/cards/' + id, null, 'DELETE').catch(function () { return null; }); if (!ok(r)) return oops(r); say('Draft deleted.'); go('/make', true); } }))) : null]);
+        !c.takes.length && !c.paid ? h('section', { class: 'card panel' }, h('h2', { text: 'Manage' }), h('div', { class: 'rowbtns' }, h('button', { class: 'btn danger sm', type: 'button', text: 'Delete this draft', onclick: async function () { if (!await confirmBox({ title: 'Delete this draft?', text: 'Its words and photos are removed for good.', yes: 'Delete it', danger: true })) return; clearTimeout(E.saveT); E.dirty = false; const r = await SAC.call('/api/cards/' + id, null, 'DELETE').catch(function () { return null; }); if (!ok(r)) return oops(r); say('Draft deleted.'); go('/make', true); } }))) : null]);
       window.scrollTo(0, y);
     }
 
@@ -682,7 +682,7 @@
   function progress() {
     const id = S.card.id, tp = CarolTemplates.get(S.card.template) || CarolTemplates.list[0], C = 2 * Math.PI * 104; let stop = false, timer = 0, creep = 0;
     SAC.hold('rendering', true); S.clean.push(function () { stop = true; clearTimeout(timer); SAC.hold('rendering', false); });
-    const cv = h('canvas', { 'aria-hidden': 'true' }), ring = h('div', { class: 'ring' }), title = h('h1', { text: 'Warming up' }), pct = h('div', { class: 'pct', 'aria-live': 'polite' }), text = h('p'), stages = h('div', { class: 'stages', 'aria-hidden': 'true' }), acts = h('div', { class: 'rowbtns', style: 'justify-content:center' });
+    const cv = h('canvas', { 'aria-hidden': 'true' }), ring = h('div', { class: 'ring' }), title = h('h1', { text: 'Starting' }), pct = h('div', { class: 'pct', 'aria-live': 'polite' }), text = h('p'), stages = h('div', { class: 'stages', 'aria-hidden': 'true' }), acts = h('div', { class: 'rowbtns', style: 'justify-content:center' });
     ring.innerHTML = '<svg viewBox="0 0 236 236" aria-hidden="true"><defs><linearGradient id="ringg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f2b632"/><stop offset=".6" stop-color="#ff6b5e"/><stop offset="1" stop-color="#c2185b"/></linearGradient></defs><circle class="tr" cx="118" cy="118" r="104"/><circle class="fg" cx="118" cy="118" r="104" stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + C.toFixed(1) + '"/></svg>';
     ring.appendChild(cv); const fg = $('.fg', ring);
     const cast = (tp.cast || []).filter(function (x) { return x.kind === 'character'; }).slice(0, 3).map(function (x) { return x.name; }), bpm = tp.music && tp.music.bpm || 110;
@@ -736,7 +736,7 @@
     const link = function (name, ic, href) { return h('a', { href: href, target: '_blank', rel: 'noopener', onclick: function () { mark(); } }, icon(ic), name); };
     const e = encodeURIComponent;
     const top = h('section', { class: 'ready-top' },
-      h('div', {}, h('h1', { text: down ? 'This card is resting' : 'Your carol is ready' }), h('p', { text: title })),
+      h('div', {}, h('h1', { text: down ? 'This card is taken down' : 'Your carol is ready' }), h('p', { text: title })),
       h('div', { class: 'phone' }, h('div', { class: 'screen' }, down ? [thumb(c.engine, {}), h('div', { class: 'downed' }, 'Taken down', h('span', { style: 'font-weight:400;font-size:13.500px', text: 'Nobody can open it until you put it back.' }))] : video)),
       h('div', { class: 'stat' }, h('span', {}, h('b', { text: String(c.opens) }), ' ' + (c.opens === 1 ? 'open' : 'opens')), h('span', {}, h('b', { text: String(c.sent) }), ' emailed')),
       h('button', { class: 'btn ghost on-dark sm', onclick: function () { go('/make?card=' + id + '&edit'); } }, icon('pencil'), 'Edit this carol'));
@@ -754,7 +754,7 @@
           h('button', { onclick: copy }, icon('copy'), 'Copy link')),
         h('span', { class: 'label', text: 'Download the video' }),
         h('div', { class: 'rowbtns' }, h('a', { class: 'btn soft sm', href: base + '/story.mp4?dl=1', download: c.slug + '-story.mp4', onclick: function () { mark(); } }, icon('down2'), 'Tall: stories and reels'), h('a', { class: 'btn soft sm', href: base + '/square.mp4?dl=1', download: c.slug + '.mp4', onclick: function () { mark(); } }, icon('down2'), 'Square: feeds and email')));
-    const care = h('section', { class: 'card panel' }, h('h2', { text: 'Housekeeping' }), h('div', { class: 'rowbtns' },
+    const care = h('section', { class: 'card panel' }, h('h2', { text: 'Manage' }), h('div', { class: 'rowbtns' },
       down ? null : h('button', { class: 'btn soft sm', text: 'Take it down', onclick: async function () { if (await confirmBox({ title: 'Take this card down?', text: 'The link will show nothing until you put it back. Nothing is deleted.', yes: 'Take it down' })) again(await SAC.call('/api/cards/' + id + '/down', {}).catch(function () { return null; })); } }),
       h('button', { class: 'btn danger sm', text: 'Delete this carol', onclick: async function () { if (!await confirmBox({ title: 'Delete this carol?', text: 'Its photos, its song and its video are removed for good, and its link stops working.', more: 'A credit that was used for it does not come back.', yes: 'Delete it', danger: true })) return; const r = await SAC.call('/api/cards/' + id, null, 'DELETE').catch(function () { return null; }); if (!ok(r)) return oops(r); say('Deleted.'); go('/make', true); } })));
     // the card says its video is older than its last edit (the server's word, c.stale): offered here too, not only in the editor
@@ -763,10 +763,10 @@
     show(h('div', { class: 'screen wide' }, h('button', { class: 'back', onclick: function () { go('/make'); } }, icon('back'), 'My carols'), h('div', { class: 'ready' }, top, h('div', { style: 'display:grid;gap:18px;min-width:0' }, stale, share, takes, care))));
   }
   function emailForm(mark) {
-    const c = S.card, L = S.cfg.limits, id = c.id, list = [], left = Math.max(0, L.recipients - (c.sent || 0)), err = h('p', { class: 'err', role: 'alert' }); let sentAny = false;
+    const c = S.card, L = S.cfg.limits, id = c.id, list = [], most = L.recipients || 50, err = h('p', { class: 'err', role: 'alert' }); let sentAny = false;
     const inp = h('input', { type: 'email', inputmode: 'email', autocomplete: 'off', placeholder: 'june@example.com', 'aria-label': 'Add an email address', autofocus: true }), box = h('div', { class: 'mailchips', onclick: function (ev) { if (ev.target === box) inp.focus(); } }, inp);
-    const draw = function () { box.querySelectorAll('.tag').forEach(function (x) { x.remove(); }); list.forEach(function (a, i) { box.insertBefore(h('span', { class: 'tag' }, a, h('button', { type: 'button', 'aria-label': 'Remove ' + a, onclick: function () { list.splice(i, 1); draw(); inp.focus(); } }, icon('x'))), inp); }); count.textContent = list.length + ' of ' + left; };
-    const take = function () { let bad = ''; inp.value.split(/[\s,;]+/).filter(Boolean).forEach(function (a) { a = a.toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(a)) bad = a + ' does not look like an email address.'; else if (list.indexOf(a) >= 0) return; else if (list.length >= left) bad = 'This carol can be emailed to ' + plural(left, 'more person').replace('persons', 'people') + '. Share the link with everyone else.'; else list.push(a); }); err.textContent = bad; if (!bad) inp.value = ''; draw(); return !bad; };
+    const draw = function () { box.querySelectorAll('.tag').forEach(function (x) { x.remove(); }); list.forEach(function (a, i) { box.insertBefore(h('span', { class: 'tag' }, a, h('button', { type: 'button', 'aria-label': 'Remove ' + a, onclick: function () { list.splice(i, 1); draw(); inp.focus(); } }, icon('x'))), inp); }); count.textContent = list.length ? plural(list.length, 'address').replace('addresss', 'addresses') : ''; };
+    const take = function () { let bad = ''; inp.value.split(/[\s,;]+/).filter(Boolean).forEach(function (a) { a = a.toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(a)) bad = a + ' does not look like an email address.'; else if (list.indexOf(a) >= 0) return; else if (list.length >= most) bad = 'That is a lot of addresses at once. Send these, then add more.'; else list.push(a); }); err.textContent = bad; if (!bad) inp.value = ''; draw(); return !bad; };
     inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ',' || ev.key === ' ') { if (inp.value.trim()) { ev.preventDefault(); take(); } else if (ev.key !== 'Enter') ev.preventDefault(); } else if (ev.key === 'Backspace' && !inp.value && list.length) { list.pop(); draw(); } });
     inp.addEventListener('blur', function () { if (inp.value.trim()) take(); }); inp.addEventListener('paste', function () { setTimeout(take, 0); });
     const count = h('span', { class: 'counter' }), note = h('textarea', { class: 'input', maxlength: '300', rows: '3', placeholder: 'Thinking of you. Turn the sound up!', style: 'min-height:84px', 'aria-label': 'A short note' }), know = h('input', { type: 'checkbox', required: true });
@@ -775,16 +775,15 @@
       ev.preventDefault(); if (inp.value.trim() && !take()) return; if (!list.length) { err.textContent = 'Add at least one email address.'; inp.focus(); return; } if (!know.checked) { err.textContent = 'Tick the box: these must be people you know.'; know.focus(); return; }
       err.textContent = ''; busy(btn, true); if (mark) await mark(); let r; try { r = await SAC.send('/api/cards/' + id + '/email', { to: list, note: note.value.trim(), know: true }); } catch (x) { r = null; } busy(btn, false);
       if (!ok(r)) { err.textContent = r && r.error || 'That did not get through. Check your connection and try again.'; return; }
-      sentAny = true; if (r.card) S.card = r.card; const rest = Math.max(0, L.recipients - (S.card.sent || 0) - r.stopped - r.failed);
+      sentAny = true; if (r.card) S.card = r.card;
       form.textContent = ''; add(form, [h('div', { class: 'result', role: 'status' }, r.sent ? 'Sent to ' + plural(r.sent, 'person').replace('persons', 'people') + '. They will love it.' : 'Nothing was sent.'),
         r.stopped ? h('p', { class: 'muted', text: plural(r.stopped, 'address') .replace('addresss', 'addresses') + ' asked not to get these emails, so nothing went there. Send them the link yourself.' }) : null, r.failed ? h('p', { class: 'err', text: plural(r.failed, 'email') + ' could not be sent. Check the address and try again.' }) : null,
-        h('p', { class: 'muted small', text: 'You can email this carol to ' + (rest === 1 ? '1 more person' : rest + ' more people') + '.' }), h('div', { class: 'foot' }, h('button', { class: 'btn', type: 'button', text: 'Done', autofocus: true, onclick: function () { d.close(); } }))]);
+        h('div', { class: 'foot' }, h('button', { class: 'btn', type: 'button', text: 'Done', autofocus: true, onclick: function () { d.close(); } }))]);
     } },
-      left > 0 ? [h('div', { class: 'field' }, h('span', { class: 'label', style: 'display:flex;justify-content:space-between' }, 'Who should get it?', count), box, h('span', { class: 'hint', text: 'Up to ' + L.recipients + ' people for one carol. Press Enter after each address.' })),
+      [h('div', { class: 'field' }, h('span', { class: 'label', style: 'display:flex;justify-content:space-between' }, 'Who should get it?', count), box, h('span', { class: 'hint', text: 'Press Enter after each address.' })),
         h('label', { class: 'field' }, h('span', { style: 'display:flex;justify-content:space-between' }, 'A short note (optional)', counter(note, 300)), note),
         h('div', { class: 'preview-mail' }, h('span', { text: 'What they will get' }), h('b', { text: c.script && c.script.title || 'Your carol' }), h('span', { text: 'An email saying "' + who + ' made you a singing card", your note, the card\'s picture and a big button that opens it. Your email address is not shown, and each person can ask not to be emailed again.' })),
-        h('label', { class: 'check' }, know, h('span', {}, h('b', { text: 'These are people I know.' }), ' I am not sending this to strangers or to a list.')), err, btn]
-        : h('p', { text: 'This carol has been emailed to ' + L.recipients + ' people, which is the most for one. Share the link with everyone else.' }));
+        h('label', { class: 'check' }, know, h('span', {}, h('b', { text: 'These are people I know.' }), ' I am not sending this to strangers or to a list.')), err, btn]);
     const d = dialog({ title: 'Send by email', body: form, onClose: function () { if (sentAny && S.card && S.card.id === id && $('.ready')) ready(); } }); draw();
   }
 
@@ -792,7 +791,7 @@
   (async function boot() {
     if (window.CarolFonts) CarolFonts.loadBrowser(D).then(function () { S.fonts = true; Thumbs.kick(); });
     let me; try { me = await SAC.read('/api/me'); } catch (e) { me = null; }
-    if (!me || !me.config) { main.textContent = ''; main.appendChild(h('div', { class: 'center-screen' }, h('div', { class: 'signin' }, h('h1', { text: 'We could not reach the studio' }), h('p', { text: me && me.error || 'Check your connection and try again.' }), h('button', { class: 'btn', text: 'Reload', onclick: function () { location.reload(); } })))); return; }
+    if (!me || !me.config) { main.textContent = ''; main.appendChild(h('div', { class: 'center-screen' }, h('div', { class: 'signin' }, h('h1', { text: 'We could not connect' }), h('p', { text: me && me.error || 'Check your connection and try again.' }), h('button', { class: 'btn', text: 'Reload', onclick: function () { location.reload(); } })))); return; }
     S.me = me; S.cfg = me.config; S.user = me.user; season(); header();
     const q = new URLSearchParams(location.search); if (S.user && q.get('paid')) await paidBack(q);
     route();

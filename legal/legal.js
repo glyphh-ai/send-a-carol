@@ -5,7 +5,7 @@
 // plain words.
 //
 // The product's name, address, prices and limits are never typed in a Markdown file. They are tokens ({{name}},
-// {{domain}}, {{site}}, {{packs}}, {{takes}}, {{recipients}}, {{photos}}), filled in here from ../config.js, so a
+// {{domain}}, {{site}}, {{packs}}, {{takes}}, {{photos}}), filled in here from ../config.js, so a
 // rename or a new price is one change in one file.
 //
 //   list()         every page: { slug, title, short, version, updated, effective, summary, path, hash, placeholders }
@@ -32,7 +32,7 @@ const SLUGS = ['terms', 'privacy', 'refunds', 'acceptable-use', 'photos'];
 // ---- the product's name and address: the repo's config module, or these when it is not there yet ----
 const CFG = { name: 'Send a Carol', domain: 'sendacarol.com', site: 'https://sendacarol.com', support: 'support@glyphh.ai', company: 'Glyphh AI LLC',
   packs: [{ id: 'one', credits: 1, cents: 499, label: '1 carol' }, { id: 'five', credits: 5, cents: 1499, label: '5 carols' }, { id: 'ten', credits: 10, cents: 2499, label: '10 carols' }],
-  finalSale: 'One-time purchase. Not refundable.', limits: { takesPerCarol: 3, recipientsPerCarol: 10, photosPerCarol: 8, photoBytes: 25 * 1024 * 1024, freeDrafts: 3 },
+  finalSale: 'One-time purchase. Not refundable.', limits: { takesPerCarol: 3, photosPerCarol: 8, photoBytes: 25 * 1024 * 1024, freeDrafts: 3 },
   brand: { ink: '#2a1a2e', berry: '#c2185b', coral: '#ff6b5e', gold: '#f2b632', cream: '#fff8ee', night: '#1d1230' } };
 const LIMITS = CFG.limits;                                   // (the defaults, for a limit the config does not give)
 try {
@@ -47,7 +47,7 @@ try {
 CFG.site = CFG.site.replace(/\/+$/, '');
 // The tokens a Markdown file may use, so that no name, price or limit is ever typed in one:
 //   {{name}} {{domain}} {{site}}              the product's name and address
-//   {{takes}} {{recipients}} {{photos}}       limits.takesPerCarol, limits.recipientsPerCarol, limits.photosPerCarol
+//   {{takes}} {{photos}}                      limits.takesPerCarol, limits.photosPerCarol
 //   {{freeDrafts}} {{photoSize}}              limits.freeDrafts, and limits.photoBytes in words ("25 MB")
 //   {{packs}}                                 a table of the packs: what each holds, its price, and the final-sale
 //                                             sentence after every price. It stands alone, as a paragraph of its own.
@@ -61,16 +61,16 @@ const packsTable = function () {
 };
 const TOKENS = {
   name: function () { return CFG.name; }, domain: function () { return CFG.domain; }, site: function () { return CFG.site; },
-  takes: function () { return String(lim('takesPerCarol')); }, recipients: function () { return String(lim('recipientsPerCarol')); }, photos: function () { return String(lim('photosPerCarol')); },
+  takes: function () { return String(lim('takesPerCarol')); }, photos: function () { return String(lim('photosPerCarol')); },
   freeDrafts: function () { return String(lim('freeDrafts')); },
   // {{photoSize}}: the largest original photo, limits.photoBytes in words ("25 MB")
   photoSize: function () { const mb = lim('photoBytes') / (1024 * 1024); return (mb >= 1 ? String(Math.round(mb * 10) / 10) + ' MB' : String(Math.round(lim('photoBytes') / 1024)) + ' KB'); },
   packs: packsTable,
 };
 function lim(k) { const v = CFG.limits[k]; return typeof v === 'number' && v > 0 ? v : LIMITS[k]; }
-const fill = function (s) { return String(s).replace(/\{\{(name|domain|site|takes|recipients|photos|freeDrafts|photoSize|packs)\}\}/g, function (_, k) { return TOKENS[k](); }); };
+const fill = function (s) { return String(s).replace(/\{\{(name|domain|site|takes|photos|freeDrafts|photoSize|packs)\}\}/g, function (_, k) { return TOKENS[k](); }); };
 // (what a drawn page depends on besides its file: when a price or a limit changes, the page is drawn again)
-const sig = function () { return JSON.stringify([CFG.name, CFG.domain, CFG.site, CFG.finalSale, CFG.packs, CFG.limits.takesPerCarol, CFG.limits.recipientsPerCarol, CFG.limits.photosPerCarol, CFG.limits.photoBytes, CFG.limits.freeDrafts]); };
+const sig = function () { return JSON.stringify([CFG.name, CFG.domain, CFG.site, CFG.finalSale, CFG.packs, CFG.limits.takesPerCarol, CFG.limits.photosPerCarol, CFG.limits.photoBytes, CFG.limits.freeDrafts]); };
 
 const esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); };
 const slugOf = function (s) { return String(s).toLowerCase().replace(/\[\[owner:[^\]]*\]\]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'section'; };

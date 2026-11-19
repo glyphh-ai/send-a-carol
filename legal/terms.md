@@ -40,7 +40,7 @@ If one of those pages and these Terms disagree, the more specific page wins for 
 
 ## 3. What the service does
 
-You choose an occasion, upload from 1 to {{photos}} photos and type a few details, such as who the carol is from and who it is for. An AI agent drafts the words of a short song with you. When you approve them, a music generation service sings them. Our server then renders a short animated video and puts it on a card: a page of its own at {{domain}}, under a name you choose. You can share the link, email the card to up to {{recipients}} recipients for each carol, and download the video as an mp4 file.
+You choose an occasion, upload from 1 to {{photos}} photos and type a few details, such as who the carol is from and who it is for. An AI agent drafts the words of a short song with you. When you approve them, a music generation service sings them. Our server then renders a short animated video and puts it on a card: a page of its own at {{domain}}, under a name you choose. You can share the link, email the card to the people you choose, and download the video as an mp4 file.
 
 **The words and the song are made by AI.** You should know what that means:
 
@@ -127,7 +127,7 @@ The card shows the carol as rendered. It never gives out your original photo fil
 
 ## 9. Emails we send for you
 
-You can ask {{name}} to email a card to up to {{recipients}} recipients for each carol.
+You can ask {{name}} to email a card to the people you choose.
 
 - **Only people you know.** By entering an address you confirm that you know the person and that they would expect to hear from you. Never use a bought, rented or collected list. See the [Acceptable Use Policy](/legal/acceptable-use#no-spam).
 - **Recipients can stop it.** Every such email has a link that stops all future {{name}} emails to that address, from anyone. We honour it, and we will not send to that address again.

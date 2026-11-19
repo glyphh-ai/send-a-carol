@@ -25,7 +25,7 @@ Questions: [support@glyphh.ai](mailto:support@glyphh.ai).
 | Your account | Your email address, and the name on your Google account if you sign in with Google. You sign in with Google or with a link sent to your email address. We never hold a password. |
 | Photos | The 1 to {{photos}} photos you upload for a carol. Each is kept as the original you sent (up to {{photoSize}}) and as resized copies made for the video. |
 | Words and details | What you type for a carol: the occasion, who it is from and for, names, the details you want in the song, what you say to the agent, the agent's drafts, the words you approve, the style of music you choose, and the name of the card's page. This may include the names of children, which you give as their parent or legal guardian or with that person's permission. |
-| Recipients | The email addresses of the people you ask us to email a card to (up to {{recipients}} for each carol). |
+| Recipients | The email addresses of the people you ask us to email a card to. |
 | Reports | If you report a card: the card, the reason, anything you add, and how to reach you if you say. |
 | Messages to us | What you write to support. |
 

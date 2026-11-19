@@ -49,7 +49,7 @@ const T0 = Date.now();
     const c = me.json.config;
     ['name', 'tagline', 'domain', 'site', 'noun', 'support', 'finalSale', 'currency', 'packs', 'limits', 'video', 'occasions', 'featured', 'payments', 'agent', 'music', 'email'].forEach(function (k) { ok(c[k] !== undefined, 'config.' + k + ' is there'); });
     eq(c.name, CFG.name); eq(c.noun, 'carol'); eq(c.support, 'support@glyphh.ai'); eq(c.finalSale, 'One-time purchase. Not refundable.'); eq(c.site, SITE); eq(c.currency, 'usd');
-    eq(JSON.stringify(c.limits), JSON.stringify({ photos: 8, photoBytes: 25 * 1024 * 1024, takes: 3, rewrites: 10, freeDrafts: 3, recipients: 10, lines: 10, lineChars: 64, details: 1200 }), 'config.limits');
+    eq(JSON.stringify(c.limits), JSON.stringify({ photos: 8, photoBytes: 25 * 1024 * 1024, takes: 3, rewrites: 10, freeDrafts: 3, recipients: 50, lines: 10, lineChars: 64, details: 1200 }), 'config.limits');
     eq(JSON.stringify(c.video), '{"min":20,"max":40}', 'config.video'); eq(JSON.stringify(c.packs.map(function (p) { return [p.id, p.credits, p.cents, p.soon]; })), '[["one",1,499,false],["five",5,1499,false],["ten",10,2499,false]]', 'config.packs');
     ok(c.payments === true && c.agent === true && c.music === true && c.email === true, 'what is set up'); ok(SECRETS.every(function (s) { return me.text.indexOf(s) < 0; }), 'no secret in /api/me');
 
@@ -541,11 +541,11 @@ const T0 = Date.now();
     ok(F.sent[n0 + 1].headers['List-Unsubscribe'] !== m.headers['List-Unsubscribe'], 'each person has their own stop link');
     // the record: a hash, never the address
     let rows = await sends(c.id); eq(rows.length, 2); eq(rows[0].hash, S.mail.hash('a@x.test'), 'the send is kept as a hash'); eq(rows[0].state, 'sent'); eq(rows[0].uid, uid);
-    // ten for a carol
+    // no limit for a carol: only the day's cap and a sane size for one send
     r = await send(c.id, { to: 'c@z.test, d@z.test; e@z.test', know: true }); eq(r.json.sent, 3, 'addresses in one line'); r = await send(c.id, { to: ['f1@z.test', 'f2@z.test', 'f3@z.test', 'f4@z.test', 'f5@z.test', 'f6@z.test'], know: true });
-    eq(r.status, 409, 'six when five are left'); ok(/5 more people \(10 in all\)/.test(r.json.error), r.json.error); eq(F.sent.length, n0 + 5, 'none of them sent');
-    r = await send(c.id, { to: ['f1@z.test', 'f2@z.test', 'f3@z.test', 'f4@z.test', 'f5@z.test'], know: true }); eq(r.json.sent, 5); eq(r.json.card.sent, CFG.limits.recipientsPerCarol, 'ten sent');
-    r = await send(c.id, { to: ['eleven@z.test'], know: true }); eq(r.status, 409, 'the eleventh is refused'); ok(/emailed to 10 people/.test(r.json.error) && /Share the link/.test(r.json.error), 'with a sentence: ' + r.json.error); eq(F.sent.length, n0 + 10); eq(await count("SELECT COUNT(*) AS n FROM events WHERE kind = 'emailed' AND card = ?", [c.id]), 10);
+    eq(r.json.sent, 6, 'six more'); r = await send(c.id, { to: ['eleven@z.test', 'twelve@z.test'], know: true }); eq(r.status, 200, 'past ten for one carol'); eq(r.json.sent, 2); eq(r.json.card.sent, 13, 'thirteen sent');
+    eq(F.sent.length, n0 + 13); eq(await count("SELECT COUNT(*) AS n FROM events WHERE kind = 'emailed' AND card = ?", [c.id]), 13);
+    r = await send(c.id, { to: Array.from({ length: CFG.limits.addressesPerSend + 1 }, function (x, i) { return 'many' + i + '@z.test'; }), know: true }); eq(r.status, 413, 'too many addresses in one send'); ok(/at a time/.test(r.json.error) && !/carol/.test(r.json.error), 'with a sentence: ' + r.json.error); eq(F.sent.length, n0 + 13, 'none of them sent');
     // stopping
     const sp = new URL(stop[1]), sl = sp.pathname + sp.search; r = await GET(sl); eq(r.status, 200, 'GET /stop shows a page'); ok(/<form method="post"/.test(r.text) && /<button[^>]*>Don&#39;t email me again|<button[^>]*>Don't email me again/.test(r.text) && r.text.indexOf('a@x.test') > 0, 'with a button'); eq(await count('SELECT COUNT(*) AS n FROM suppress'), 0, 'and stops nothing');
     for (const bad of ['/stop', '/stop?e=' + sp.searchParams.get('e') + '&k=' + 'A'.repeat(32), '/stop?e=' + Buffer.from('b@y.test').toString('base64url') + '&k=' + sp.searchParams.get('k'), '/stop?e=%%%&k=x', '/stop?e=' + sp.searchParams.get('e')]) { eq((await GET(bad)).status, 400, 'a bad stop link is refused: ' + bad.slice(0, 30)); eq((await T.call('POST', bad, '')).status, 400); }

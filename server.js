@@ -665,7 +665,7 @@ async function cardMedia(req, res, row, what, url) {
 function publicConfig() {
   const o = occasions();
   return { name: CFG.name, tagline: CFG.tagline, domain: CFG.domain, site: SITE, noun: CFG.noun, support: CFG.support, finalSale: CFG.finalSale, currency: CFG.currency, packs: CFG.packs.map(function (p) { return { id: p.id, credits: p.credits, cents: p.cents, label: p.label, soon: !(p.cents > 0) }; }),
-    limits: { photos: limit('photosPerCarol'), photoBytes: limit('photoBytes'), takes: limit('takesPerCarol'), rewrites: limit('rewritesPerCarol'), freeDrafts: limit('freeDrafts'), recipients: limit('recipientsPerCarol'), lines: CFG.limits.lyricLines, lineChars: CFG.limits.lineChars, details: limit('detailsChars') },
+    limits: { photos: limit('photosPerCarol'), photoBytes: limit('photoBytes'), takes: limit('takesPerCarol'), rewrites: limit('rewritesPerCarol'), freeDrafts: limit('freeDrafts'), recipients: limit('addressesPerSend'), lines: CFG.limits.lyricLines, lineChars: CFG.limits.lineChars, details: limit('detailsChars') },
     video: { min: CFG.video.minSec, max: CFG.video.maxSec }, occasions: o.list.filter(function (x) { return x.state !== 'off'; }), featured: o.featured, payments: !!env.STRIPE_SECRET_KEY, agent: Agent.available(), music: Song.available() && !ST.broken(), storage: !ST.broken(), email: mail.on(), closed: CLOSED };
 }
 let landingData = null;
@@ -792,8 +792,7 @@ async function api(req, res, url) {
       if (row.state !== 'ready') throw fail('This carol is not ready to send yet.', 409); if (!mail.on()) throw fail('Email is not set up yet. Share the link instead.', 503);
       const list = (Array.isArray(b.to) ? b.to : String(b.to || '').split(/[\s,;]+/)).map(mail.addressOf).filter(function (a, i, all) { return a && all.indexOf(a) === i; });
       if (!list.length) throw fail('Add at least one email address.'); if (b.know !== true) throw fail('Tick the box: these must be people you know.');
-      const sentN = (await db.get("SELECT COUNT(*) AS n FROM sends WHERE card = ?", [row.id])).n, left = limit('recipientsPerCarol') - sentN;
-      if (list.length > left) throw fail(left > 0 ? 'This carol can be emailed to ' + left + ' more ' + (left === 1 ? 'person' : 'people') + ' (' + limit('recipientsPerCarol') + ' in all). Share the link with everyone else.' : 'This carol has been emailed to ' + limit('recipientsPerCarol') + ' people, which is the most for one. Share the link with everyone else.', 409);
+      if (list.length > limit('addressesPerSend')) throw fail('That is a lot of addresses at once. Send to ' + limit('addressesPerSend') + ' at a time at most.', 413);
       for (let i = 0; i < list.length; i++) if (!await spendDay(user.id, 'email', limit('emailsPerDay'))) throw fail('That is a lot of emails for one day. Try again tomorrow, or share the link.', 429);
       const doc = docOf(row), s = doc.script || {}, out = await mail.sendCarol({ slug: row.slug, title: s.title, signoff: s.signoff, from: doc.answers.from }, list, str(b.note, 300));
       for (const o of out) { await db.run('INSERT INTO sends (card, uid, hash, state, at) VALUES (?, ?, ?, ?, ?)', [row.id, user.id, mail.hash(o.to), o.state, now()]); if (o.state === 'sent') await note('emailed', row.id, user.id); }

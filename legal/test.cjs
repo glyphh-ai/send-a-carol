@@ -96,12 +96,12 @@ ok('no {{ token is left in any page, and the name is the config\'s', function ()
     assert.ok(bodyOf(s).indexOf('{{') < 0 && docs[s].meta.title.indexOf('{{') < 0, s + ': a token in what was read');
     assert.ok(raw(s).indexOf('{{name}}') > 0, s + ': the file names the product only by its token');
     assert.ok(raw(s).indexOf(C.name) < 0 && raw(s).indexOf(C.domain) < 0, s + ': the name or the domain is typed in the file');
-    (raw(s).match(/\{\{[^}]*\}\}/g) || []).forEach(function (t) { assert.ok(/^\{\{(name|domain|site|packs|takes|recipients|photos|freeDrafts|photoSize)\}\}$/.test(t), s + ': a token legal.js does not know: ' + t); });
+    (raw(s).match(/\{\{[^}]*\}\}/g) || []).forEach(function (t) { assert.ok(/^\{\{(name|domain|site|packs|takes|photos|freeDrafts|photoSize)\}\}$/.test(t), s + ': a token legal.js does not know: ' + t); });
     assert.ok(!/\d\s?(MB|KB|GB)\b/.test(raw(s)), s + ': a file size is typed in the file (it comes from the config, through {{photoSize}})');
     assert.ok(!/\$\s?\d/.test(raw(s)), s + ': a price is typed in the file (prices come from the config, through {{packs}})');
   });
   assert.strictEqual(L.fill('{{name}} at {{domain}}, {{site}}'), C.name + ' at ' + C.domain + ', ' + C.site);
-  assert.strictEqual(L.fill('{{takes}} {{recipients}} {{photos}}'), [C.limits.takesPerCarol, C.limits.recipientsPerCarol, C.limits.photosPerCarol].join(' '));
+  assert.strictEqual(L.fill('{{takes}} {{photos}}'), [C.limits.takesPerCarol, C.limits.photosPerCarol].join(' '));
 });
 ok('the brand is the config\'s: Send a Carol at sendacarol.com, read from ../config.js', function () {
   assert.ok(REPO, '../config.js is there and loads');
@@ -111,12 +111,12 @@ ok('the brand is the config\'s: Send a Carol at sendacarol.com, read from ../con
   everyHtml().forEach(function (p) { assert.ok(!/carol ?time/i.test(p[1]), p[0] + ': the working name is still on the page'); });
   fs.readdirSync(__dirname).forEach(function (f) { if (f !== 'test.cjs' && fs.statSync(path.join(__dirname, f)).isFile()) assert.ok(!/carol ?time/i.test(fs.readFileSync(path.join(__dirname, f), 'utf8')), f + ': the working name is still in the file'); });
 });
-ok('the limits on the pages are the config\'s: photos, recipients and takes for each carol', function () {
+ok('the limits on the pages are the config\'s: photos and takes for each carol, and no limit on recipients', function () {
   const lim = L.CFG.limits;
   assert.ok(L.page('terms').indexOf('upload from 1 to ' + lim.photosPerCarol + ' photos') > 0 && L.page('photos').indexOf('made from 1 to ' + lim.photosPerCarol + ' photos') > 0 && L.page('privacy').indexOf('The 1 to ' + lim.photosPerCarol + ' photos') > 0, 'photos');
-  assert.ok(L.page('terms').indexOf('up to ' + lim.recipientsPerCarol + ' recipients for each carol') > 0 && L.page('privacy').indexOf('up to ' + lim.recipientsPerCarol + ' for each carol') > 0 && L.page('acceptable-use').indexOf('the limit of ' + lim.recipientsPerCarol + ' recipients') > 0, 'recipients');
+  assert.ok(L.page('terms').indexOf('email a card to the people you choose') > 0, 'recipients'); SLUGS.forEach(function (s) { assert.ok(!/recipients for each carol|for each carol\)|the limit of \d+ recipients/.test(L.page(s)), s + ': no limit on recipients'); });
   ['terms', 'refunds'].forEach(function (s) { assert.ok(L.page(s).indexOf('Each paid carol includes ' + lim.takesPerCarol + ' takes of the song') > 0, s + ': takes'); });
-  assert.deepStrictEqual([lim.takesPerCarol, lim.recipientsPerCarol, lim.photosPerCarol], [3, 10, 8]);
+  assert.deepStrictEqual([lim.takesPerCarol, lim.photosPerCarol], [3, 8]);
   // the largest photo and the free drafts
   const size = lim.photoBytes / (1024 * 1024) + ' MB'; assert.strictEqual(L.fill('{{photoSize}}'), size); assert.strictEqual(size, '25 MB'); assert.strictEqual(L.fill('{{freeDrafts}}'), String(lim.freeDrafts));
   ['privacy', 'photos'].forEach(function (s) { assert.ok(L.page(s).indexOf('(up to ' + size + ')') > 0, s + ': the largest photo'); });

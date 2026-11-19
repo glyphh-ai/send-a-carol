@@ -56,7 +56,6 @@ Use only photos you have the right to use, of people who would be fine with it. 
 
 - **Email a card only to people you know**, who would expect to hear from you: family, friends, colleagues, your own customers who know you.
 - **Never a marketing list.** Do not send to a bought, rented, scraped or collected list of addresses.
-- Do not try to get round the limit of {{recipients}} recipients for each carol by making copies of a carol to reach more people with the same message.
 - Do not try to get round a recipient's "don't email me again" choice.
 
 ## The service itself

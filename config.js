@@ -36,7 +36,7 @@ const config = {
     photosPerCarol: 8,
     photoBytes: 25 * 1024 * 1024,
     photoPx: 1600,               // the longest side of the resized copy the video is made from
-    recipientsPerCarol: 10,
+    addressesPerSend: 50,        // email addresses in one send (a sanity size; there is no limit per carol)
     emailsPerDay: 30,            // per account
     detailsChars: 1200,
     lyricLines: 10,

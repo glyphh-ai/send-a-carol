@@ -13,7 +13,7 @@
 'use strict';
 const assert = require('assert'), fs = require('fs'), path = require('path');
 // (a small video, and room for this test to make many carols and send many emails in one day)
-process.env.CONFIG_OVERRIDE = JSON.stringify({ video: { sizes: { story: [270, 480], square: [270, 270] } }, limits: { carolsPerDay: 100000, agentCallsPerDay: 100000, freeDrafts: 100000, emailsPerDay: 100000, recipientsPerCarol: 100000 } });
+process.env.CONFIG_OVERRIDE = JSON.stringify({ video: { sizes: { story: [270, 480], square: [270, 270] } }, limits: { carolsPerDay: 100000, agentCallsPerDay: 100000, freeDrafts: 100000, emailsPerDay: 100000 } });
 const K = require('./kit.cjs'), FILE = path.join(__dirname, 'contract.json'), accept = process.argv.indexOf('--accept'), out = accept >= 0 ? process.argv[accept + 1] || FILE : '';
 // What THIS build's pages send, each as the page sends it: by nobody or by an account. In a path ":id" is a carol, and
 // "on" says which: draft (answers only), ready (finished), new (a draft of its own), written (one of its own, with
