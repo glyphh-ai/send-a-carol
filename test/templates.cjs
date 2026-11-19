@@ -123,8 +123,8 @@ const LONG = 'Wonderfully long lyric line number one that runs to sixty-four ch'
 assert.strictEqual(LONG.length, 64);
 function card(id, nPhotos) {
   return {
-    template: id, to: 'Grandmother Josephine Elizabeth Timmerman', from: 'The Extended Timmerman-Vandersloot Family',   // 40 characters each
-    title: 'A Carol for Grandmother Josephine Elizabeth Timmerman', greeting: 'The Merriest Christmas Ever, Grandmother Josephine!', signoff: 'With all our love, Sam, Ada, Theo, Biscuit and the whole crew',
+    template: id, to: 'Grandmother Josephine Elizabeth Hollister', from: 'The Extended Hollister-Vandersloot Family',   // 40 characters each
+    title: 'A Carol for Grandmother Josephine Elizabeth Hollister', greeting: 'The Merriest Christmas Ever, Grandmother Josephine!', signoff: 'With all our love, Sam, Wren, Milo, Waffles and the whole crew',
     lyrics: [{ section: 'verse', lines: [LONG, LONG, 'A short one', LONG] }, { section: 'hook', lines: [LONG, LONG] }, { section: 'verse', lines: [LONG, 'Supercalifragilisticexpialidociously-unbreakable-word-here-now'] }],
     scenes: Array.from({ length: nPhotos }, (_, i) => ({ photo: i, caption: i % 3 === 1 ? '' : 'A fairly long caption about this photo, number ' + (i + 1) })), timing: null
   };
@@ -149,6 +149,8 @@ function checkBoxes(boxes, W, H, where) {
   for (const b of texts) {
     assert.ok(b.x >= x0 - eps && b.x + b.w <= x1 + eps && b.y >= y0 - eps && b.y + b.h <= y1 + eps, where + ': text "' + b.what + '" outside the safe area ' + JSON.stringify([b.x, b.y, b.w, b.h].map((v) => +(v / (v === b.y || v === b.h ? H : W)).toFixed(3))));
     for (const f of faces) assert.ok(!hits(b, f), where + ': text "' + b.what + '" over a face');
+    // the words being sung never sit over the middle of a photo
+    if (/^lyric/.test(b.what)) for (const p of ph) { const cx = p.x + p.w / 2, cy = p.y + p.h / 2; assert.ok(!(cx > b.x && cx < b.x + b.w && cy > b.y && cy < b.y + b.h), where + ': the lyric "' + b.what + '" is over the centre of a photo'); }
   }
   return texts.length;
 }
@@ -238,6 +240,42 @@ list.forEach((t, ti) => {
   // odd input never throws
   for (const bad of [null, {}, { template: 'nope' }, { template: 'holy-night', lyrics: 'x', scenes: [{ photo: 99 }, { photo: -1 }, null], timing: { duration: 8, bpm: 500, beats: [1] } }, { template: 'neon-noel', timing: { duration: 22, bpm: 60 } }]) {
     const p = E.plan(bad); assert.ok(p.scenes.length >= 3 && p.scenes[p.scenes.length - 1].t1 === p.duration); E.draw(small.square.getContext('2d'), 270, 270, bad, 2, null); E.draw(small.tall.getContext('2d'), 270, 480, bad, 1e9, { images: 'x' }); E.beatAt(bad, -5); E.posterTime(bad); E.hit(bad, 270, 480, 3, 10, 10);
+  }
+}
+
+// ---------- which frame a photo gets (from its shape and what the sender said), and how it sits in its window ----------
+{
+  const shaped = new Set(E.shapedFrames), frameOf = (pl) => { const m = {}; pl.scenes.filter((s) => s.kind === 'photo').forEach((s) => s.photos.forEach((p, i) => { m[p] = s.frames[i]; })); return m; };
+  const four = (more) => [{ photo: 0, caption: '', ar: 1.5 }, { photo: 1, caption: '', ar: 0.75 }, { photo: 2, caption: '', ar: 1.333 }, { photo: 3, caption: '', ar: 0.75 }].map((s, i) => Object.assign(s, more && more[i]));
+  let withShaped = 0;
+  for (const tp of list) {
+    const has = tp.frames.some((x) => shaped.has(x)), mk = (scenes) => Object.assign(card(tp.id, 0), { scenes }); if (has) withShaped++;
+    let pl = E.plan(mk(four())), f = frameOf(pl);
+    assert.ok(!shaped.has(f[0]) && !shaped.has(f[2]), tp.id + ': a wide photo never goes in a shaped frame (' + f[0] + ', ' + f[2] + ')');
+    assert.strictEqual(shaped.has(f[1]), has, tp.id + ': with nothing said, the first upright photo gets the template\'s shaped frame'); assert.ok(!shaped.has(f[3]), tp.id + ': and only the first');
+    assert.strictEqual(pl.scenes[0].frame, f[0], tp.id + ': the title shows the first photo in its own frame'); assert.deepStrictEqual(pl.scenes[pl.scenes.length - 1].frames, [f[0], f[1], f[2]], tp.id + ': and so does the sign-off');
+    pl = E.plan(mk(four({ 2: { solo: 1 } }))); f = frameOf(pl);
+    assert.strictEqual(shaped.has(f[2]), has, tp.id + ': a photo marked "one person" gets the shaped frame'); assert.ok(!shaped.has(f[0]) && !shaped.has(f[1]) && !shaped.has(f[3]), tp.id + ': and then no other photo does');
+    for (const s of pl.scenes) for (const x of s.frames) assert.ok(Art.frames.includes(x), tp.id + ': frame ' + x);
+    // few photos: the cast performs between them. No drawn stand-in scene, and so no "For <name>" tag said again
+    for (const n of [1, 2]) { const p2 = E.plan(card(tp.id, n)); assert.ok(!p2.scenes.some((s) => s.kind === 'art'), tp.id + ' with ' + n + ' photos: no drawn filler scene'); assert.ok(p2.scenes.filter((s) => s.kind === 'lyric').length >= 2, tp.id + ' with ' + n + ' photos: the cast performs between the photos');
+      for (let i = 1; i < p2.scenes.length; i++) if (p2.scenes[i].kind === 'lyric' && p2.scenes[i - 1].kind === 'lyric') assert.notStrictEqual(p2.scenes[i].tableau, p2.scenes[i - 1].tableau, tp.id + ': two cast scenes in a row differ'); }
+  }
+  assert.ok(withShaped >= 10, 'templates with a shaped frame: ' + withShaped);
+  // a wide photo makes a rectangular frame wide; an upright one leaves it as it is; a frame that cannot stretch stays
+  assert.ok(E.aspectFor('plain', 1.5) > 1.3 && E.aspectFor('polaroid', 1.333) > 1.2, 'wide frames for wide photos'); assert.strictEqual(E.aspectFor('plain', 0.75), E.aspectFor('plain', 0)); assert.strictEqual(E.aspectFor('tag', 1.5), E.aspectFor('tag', 0.75)); assert.ok(E.aspectFor('plain', 3) <= 1.42);
+  { const c = Object.assign(card('gold-medal', 0), { scenes: [{ photo: 0, caption: '', ar: 1.5 }, { photo: 1, caption: '', ar: 1.5 }, { photo: 2, caption: '', ar: 1.5 }, { photo: 3, caption: '', ar: 1.5 }, { photo: 4, caption: '', ar: 1.5 }, { photo: 5, caption: '', ar: 1.5 }, { photo: 6, caption: '', ar: 1.5 }, { photo: 7, caption: '', ar: 1.5 }] }), pl = E.plan(c), s = pl.scenes.find((x) => x.kind === 'photo' && x.photos.length === 1) || pl.scenes[0];
+    const env = { images: photos, boxes: [] }; E.draw(small.tall.getContext('2d'), 270, 480, c, (s.t0 + s.t1) / 2 + 0.4, env); const pb = env.boxes.filter((b) => b.kind === 'photo'); assert.ok(pb.length >= 1 && pb.every((b) => b.w > b.h * 1.15), 'a wide photo is shown in a wide window: ' + JSON.stringify(pb.map((b) => [Math.round(b.w), Math.round(b.h)]))); }
+  // how the photo sits in its window: what part of it is drawn (the last drawImage of the frame)
+  const cv = Canvas.createCanvas(400, 500), ctx = cv.getContext('2d'), wide = Canvas.createCanvas(1600, 900), upright = Canvas.createCanvas(900, 1200), calls = [], real = ctx.drawImage.bind(ctx);
+  ctx.drawImage = function () { calls.push(Array.from(arguments)); return real.apply(null, arguments); };
+  const part = (name, img, o) => { calls.length = 0; Art.frame(name, ctx, img, 0, 0, 400, 500, 1, list[0].look.pal, o); const a = calls[calls.length - 1]; return { n: calls.length, w: a[3] / img.width, h: a[4] / img.height, cx: (a[1] + a[3] / 2) / img.width, cy: (a[2] + a[4] / 2) / img.height }; };
+  for (const name of Art.frames) {
+    let p = part(name, wide, { keep: true }); assert.ok(p.w >= 0.86 - 1e-6, name + ': a wide photo keeps at least 86% of its width in view (a group stays whole), got ' + p.w.toFixed(2)); assert.ok(p.h >= 0.8 - 1e-6, name + ': and 80% of its height');
+    p = part(name, upright, { keep: true }); assert.ok(p.w >= 0.86 - 1e-6 && p.h >= 0.8 - 1e-6, name + ': an upright photo too (' + p.w.toFixed(2) + ' x ' + p.h.toFixed(2) + ')');
+    p = part(name, wide, { solo: true }); assert.strictEqual(p.n, 1, name + ': one person: the window is filled, nothing behind'); assert.ok(p.w < 0.8 && Math.abs(p.cx - 0.5) < 0.01, name + ': and cropped to the middle');
+    p = part(name, wide, { fit: [0.2, 0.5, 2] }); assert.ok(Math.abs(p.cx - Math.max(0.2, p.w / 2)) < 0.01, name + ': placed by the sender: that point is in the middle (' + p.cx.toFixed(3) + ')'); const one = part(name, wide, { fit: [0.5, 0.5, 1] }); assert.ok(Math.abs(p.w * 2 - one.w) < 0.01, name + ': at twice the zoom, half the width shows');
+    p = part(name, wide, { fit: [0.5, 0.5, 0.6] }); assert.ok(p.w > one.w || one.w === 1, name + ': zoomed out, more shows');
   }
 }
 

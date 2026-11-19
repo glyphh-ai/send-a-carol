@@ -36,7 +36,7 @@ function openDb() {
     return { postgres: true, all: async function (s, p) { return (await q(s, p)).rows; }, get: async function (s, p) { return (await q(s, p)).rows[0] || null; }, run: async function (s, p) { await q(s, p); }, exec: function (s) { return pool.query(s); } };
   }
   fs.mkdirSync(dataDir, { recursive: true });
-  const lite = new (require('node:sqlite').DatabaseSync)(path.join(dataDir, APP + '.db'));
+  const lite = new (require('node:sqlite').DatabaseSync)(path.join(dataDir, APP + '.db')); lite.exec('PRAGMA busy_timeout = 4000');   // (a second process on the same file waits its turn)
   return { postgres: false, all: async function (s, p) { const st = lite.prepare(s); return st.all.apply(st, p || []); }, get: async function (s, p) { const st = lite.prepare(s); return st.get.apply(st, p || []) || null; },
     run: async function (s, p) { const st = lite.prepare(s); st.run.apply(st, p || []); }, exec: async function (s) { lite.exec(s); } };
 }
@@ -82,7 +82,10 @@ const SCHEMA = `
   CREATE TABLE IF NOT EXISTS admin_log (id TEXT PRIMARY KEY, at BIGINT, who TEXT, via TEXT, tool TEXT, args TEXT, reason TEXT, result TEXT, ok INTEGER DEFAULT 1);
   CREATE INDEX IF NOT EXISTS admin_log_at ON admin_log (at);
 `;
-const ADDED = [];   // columns added since a table was first made: [table, column, type]
+// columns added since a table was first made: [table, column, type]
+//   cards.rendered  what the video in storage was made from (a hash): the card knows when its video is older than its last edit
+//   jobs.owner, jobs.lease  which machine is running a job, and until when it may (it renews while it works)
+const ADDED = [['cards', 'rendered', 'TEXT'], ['jobs', 'owner', 'TEXT'], ['jobs', 'lease', 'BIGINT']];
 const CLEANUP = [/* cleanup:begin (statements that remove what the release BEFORE this one stopped using) */
 /* cleanup:end */];
 async function addColumn(a) {
@@ -91,7 +94,9 @@ async function addColumn(a) {
 }
 const ready = Promise.resolve().then(function () { return db.exec(SCHEMA); }).then(async function () { for (const a of ADDED) await addColumn(a); for (const s of CLEANUP) await db.exec(s); await loadSettings(); });
 ready.catch(function () { /* said where it is awaited: every request, /healthz, --check */ });
-const ST = Store({ env: env, dir: dataDir, prefix: APP + '/' });
+const ST = Store({ env: env, dir: dataDir, prefix: APP + '/', production: !!env.FLY_APP_NAME });
+// what a maker is told when a piece of the site is not switched on yet (a secret that is not set): never an error page
+const CLOSED = { storage: 'Photos and videos cannot be kept yet: the studio is still being set up. Come back soon.', agent: 'The carol writer is not open yet. Come back soon.', music: 'The band is not here yet: songs cannot be made for now. Come back soon; your words are kept.', pay: 'Purchases open soon.' };
 
 // ---------- small things ----------
 const now = function () { return Date.now(); }, rid = function (n) { return crypto.randomBytes(n || 9).toString('base64url').replace(/[-_]/g, 'x'); };
@@ -247,7 +252,7 @@ async function buy(user, b, ikey) {
   const pack = CFG.packs.find(function (p) { return p.id === b.pack; });
   if (!pack) throw fail('There is no such pack.');
   if (!(pack.cents > 0)) throw fail('That one is coming soon.', 409);
-  if (!env.STRIPE_SECRET_KEY) throw fail('Payments are not open yet.', 503);
+  if (!env.STRIPE_SECRET_KEY) throw fail(CLOSED.pay, 503);
   const line = pack.label + ' on ' + CFG.name + '. Each credit makes one singing card: the song, the video and its page. ' + CFG.finalSale;
   const params = { mode: 'payment', 'line_items[0][quantity]': '1', 'line_items[0][price_data][currency]': CFG.currency, 'line_items[0][price_data][unit_amount]': String(pack.cents), 'line_items[0][price_data][product_data][name]': CFG.name + ': ' + pack.label, 'line_items[0][price_data][product_data][description]': line,
     'custom_text[submit][message]': CFG.finalSale, 'metadata[app]': APP, 'metadata[user]': user.id, 'metadata[pack]': pack.id, 'metadata[credits]': String(pack.credits), 'payment_intent_data[metadata][app]': APP, 'payment_intent_data[metadata][user]': user.id, 'payment_intent_data[description]': CFG.name + ': ' + pack.label,
@@ -282,7 +287,7 @@ async function recover(user) {
 const DOC_V = 1, SLUG = /^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){1,38}[a-z0-9]$/;
 const slugify = function (s) { return String(s || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32).replace(/-+$/, ''); };
 function slugProblem(s) {
-  if (typeof s !== 'string' || !SLUG.test(s)) return 'A card\'s name is 3 to 40 letters, digits and hyphens, like the-timmermans-2026.';
+  if (typeof s !== 'string' || !SLUG.test(s)) return 'A card\'s name is 3 to 40 letters, digits and hyphens, like the-hollisters-2026.';
   if (CFG.reserved.indexOf(s) >= 0 || /\.(?:js|css|html|png|jpg|svg|ico|txt|xml|json)$/.test(s)) return 'That name is used by the site itself. Pick another.';
   return '';
 }
@@ -305,7 +310,16 @@ const cleanAnswers = function (a, was) {
   Object.keys(L).forEach(function (k) { if (a[k] !== undefined) o[k] = str(a[k], L[k]); });
   return o;
 };
-// what the maker may change by hand in the script: every line, the title, the greeting, the sign-off, captions and order
+// how the maker placed a photo in its frame, kept with the photo's scene: fit = [x, y, zoom] (the point of the photo
+// that sits in the middle of the frame, each 0 to 1, and a zoom of 0.5 to 4 where 1 just fills the frame), solo = "this is one person" (it may go in
+// a round or shaped frame). Nothing here looks at the picture.
+function placed(o, x) {
+  const f = x && x.fit;
+  if (Array.isArray(f) && f.length === 3 && f.every(function (n) { return typeof n === 'number' && isFinite(n); })) o.fit = [Math.min(1, Math.max(0, f[0])), Math.min(1, Math.max(0, f[1])), Math.min(4, Math.max(0.5, f[2]))].map(function (n) { return Math.round(n * 1000) / 1000; });
+  if (x && (x.solo === true || x.solo === 1)) o.solo = 1;
+  return o;
+}
+// what the maker may change by hand in the script: every line, the title, the greeting, the sign-off, captions, order and placing
 function cleanScript(s, was, pids) {
   if (!was) return null; if (!s || typeof s !== 'object') return was;
   const L = CFG.limits, o = Object.assign({}, was);
@@ -318,7 +332,7 @@ function cleanScript(s, was, pids) {
     if (n < 2) throw fail('A carol needs at least two lines to sing.'); if (n > L.lyricLines) throw fail('That is more than ' + L.lyricLines + ' lines: too long to sing in ' + CFG.video.maxSec + ' seconds.');
     o.lyrics = ly;
   }
-  if (Array.isArray(s.scenes)) { const seen = {}; o.scenes = s.scenes.filter(function (x) { return x && pids.indexOf(x.pid) >= 0 && !seen[x.pid] && (seen[x.pid] = 1); }).map(function (x) { return { pid: x.pid, caption: str(x.caption, 40) }; }); pids.forEach(function (p) { if (!seen[p]) o.scenes.push({ pid: p, caption: '' }); }); }
+  if (Array.isArray(s.scenes)) { const seen = {}; o.scenes = s.scenes.filter(function (x) { return x && pids.indexOf(x.pid) >= 0 && !seen[x.pid] && (seen[x.pid] = 1); }).map(function (x) { return placed({ pid: x.pid, caption: str(x.caption, 40) }, x); }); pids.forEach(function (p) { if (!seen[p]) o.scenes.push({ pid: p, caption: '' }); }); }
   else o.scenes = (was.scenes || []).filter(function (x) { return pids.indexOf(x.pid) >= 0; }).concat(pids.filter(function (p) { return !(was.scenes || []).some(function (x) { return x.pid === p; }); }).map(function (p) { return { pid: p, caption: '' }; }));
   return o;
 }
@@ -328,19 +342,25 @@ function engineCard(row, doc, photos, take) {
   const s = doc.script || {}, a = doc.answers || {}, order = (s.scenes || []).filter(function (x) { return photos.some(function (p) { return p.id === x.pid; }); });
   let timing = null; if (take) { try { timing = JSON.parse(take.timing); } catch (e) { timing = null; } }
   let lyrics = s.lyrics || []; if (take && take.words) { try { lyrics = JSON.parse(take.words); } catch (e) { /* the script's words */ } }
-  return { card: { template: row.template, to: a.to || '', from: a.from || '', title: s.title || '', greeting: s.greeting || '', signoff: s.signoff || '', lyrics: lyrics, scenes: order.map(function (x, i) { return { photo: i, caption: x.caption || '' }; }), timing: timing }, pids: order.map(function (x) { return x.pid; }) };
+  const scenes = order.map(function (x, i) { const p = photos.find(function (q) { return q.id === x.pid; }), o = placed({ photo: i, caption: x.caption || '' }, x); if (p && p.w > 0 && p.h > 0) o.ar = Math.round(p.w / p.h * 1000) / 1000; return o; });   // ar: the photo's shape, so a wide one gets a wide frame
+  return { card: { template: row.template, to: a.to || '', from: a.from || '', title: s.title || '', greeting: s.greeting || '', signoff: s.signoff || '', lyrics: lyrics, scenes: scenes, timing: timing }, pids: order.map(function (x) { return x.pid; }) };
 }
+// what a video was made from, as a short hash: the same card, photos and take give the same one
+const renderKey = function (e, takeId) { return crypto.createHash('sha256').update(JSON.stringify([e.card, e.pids, takeId || ''])).digest('hex').slice(0, 16); };
 async function view(row, user) {   // the maker's own view of a carol
   const doc = docOf(row), photos = await photosOf(row.id), takes = await db.all('SELECT id, n, seconds, peak, rms, at FROM takes WHERE card = ? ORDER BY n', [row.id]), take = row.take ? await db.get('SELECT * FROM takes WHERE id = ?', [row.take]) : null;
   const job = await db.get("SELECT id, kind, state, stage, pct, error FROM jobs WHERE card = ? ORDER BY created DESC LIMIT 1", [row.id]), media = await db.all('SELECT kind, take FROM media WHERE card = ?', [row.id]);
   const e = engineCard(row, doc, photos, take), sent = (await db.get("SELECT COUNT(*) AS n FROM sends WHERE card = ? AND state = 'sent'", [row.id])).n;
   return { id: row.id, slug: row.slug || '', state: row.state, occasion: row.occasion, template: row.template, title: row.title || '', answers: doc.answers, script: doc.script, note: doc.note || '', paid: !!row.paid, take: row.take || '', rewrites: row.rewrites || 0, shared: !!row.shared, opens: row.opens || 0, sent: sent, updated: row.updated,
     photos: photos.map(function (p) { return { id: p.id, w: p.w, h: p.h, note: p.note || '', url: '/api/cards/' + row.id + '/photos/' + p.id }; }), takes: takes.map(function (t) { return { id: t.id, n: t.n, seconds: t.seconds, url: '/api/cards/' + row.id + '/song/' + t.id }; }), takesLeft: Math.max(0, limit('takesPerCarol') - takes.length),
-    job: job && (job.state === 'queued' || job.state === 'running' || job.state === 'failed') ? job : null, media: media.map(function (m) { return m.kind; }), engine: e.card, pids: e.pids, url: row.slug ? SITE + '/' + row.slug : '', v: row.take || '' };
+    // stale: the video in storage was made from something else than the card is now (an edit since): "Update the video" is offered from this
+    stale: !!(take && row.rendered && media.some(function (m) { return m.kind === 'story'; }) && row.rendered !== renderKey(e, take.id)),
+    job: job && (job.state === 'queued' || job.state === 'running' || job.state === 'failed') ? job : null, media: media.map(function (m) { return m.kind; }), engine: e.card, pids: e.pids, url: row.slug ? SITE + '/' + row.slug : '', v: row.take || '', mv: await mediaStamp(row.id) };   // mv: which video is in storage now (the maker's page asks for it by this, so an updated video is not an old cached one)
 }
 async function mine(user, id) { const row = await db.get('SELECT * FROM cards WHERE id = ? AND uid = ?', [str(id, 40), user.id]); if (!row || row.state === 'deleted') throw fail('There is no such carol.', 404); return row; }
 async function saveDoc(row, doc, more) {
-  const s = doc.script, sets = Object.assign({ doc: JSON.stringify(doc), title: s && s.title || row.title || '', updated: now(), v: DOC_V }, more), keys = Object.keys(sets);
+  // (a draft with no words yet is listed by who it is for)
+  const s = doc.script, a = doc.answers || {}, sets = Object.assign({ doc: JSON.stringify(doc), title: s && s.title || (!s && a.to ? 'For ' + a.to : row.title || ''), updated: now(), v: DOC_V }, more), keys = Object.keys(sets);
   await db.run('UPDATE cards SET ' + keys.map(function (k) { return k + ' = ?'; }).join(', ') + ' WHERE id = ?', keys.map(function (k) { return sets[k]; }).concat([row.id]));
 }
 // every key a carol owns in storage is let go; the rows that named them go with them
@@ -359,8 +379,10 @@ async function removeCard(id, why) {
   const raws = await db.all("SELECT id FROM jobs WHERE card = ? AND kind = 'song'", [id]); for (const j of raws) await ST.del('cards/' + id + '/raw-' + j.id + '.mp3').catch(function () { });
   const n = await removeMedia(id, true); await db.run("UPDATE cards SET state = 'deleted', slug = NULL, take = NULL, doc = '{}', title = '', why = ?, updated = ? WHERE id = ?", [str(why, 200), now(), id]); await db.run("UPDATE jobs SET state = 'failed', error = 'the carol was deleted' WHERE card = ? AND state IN ('queued', 'running')", [id]); return n; }
 
-const KINDS = [['image/jpeg', 'jpg', function (b) { return b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff; }], ['image/png', 'png', function (b) { return b.readUInt32BE(0) === 0x89504e47; }], ['image/webp', 'webp', function (b) { return b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP'; }]];
+const KINDS = [['image/jpeg', 'jpg', function (b) { return b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff; }], ['image/png', 'png', function (b) { return b.readUInt32BE(0) === 0x89504e47; }], ['image/webp', 'webp', function (b) { return b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP'; }],
+  ['image/heic', 'heic', function (b) { return b.toString('latin1', 4, 8) === 'ftyp' && /^(heic|heix|heim|heis|hevc|hevx|mif1|msf1)$/.test(b.toString('latin1', 8, 12)); }]];
 async function addPhoto(user, row, req) {
+  if (ST.broken()) throw fail(CLOSED.storage, 503);
   const max = limit('photoBytes'), cl = +req.headers['content-length'];
   if (cl > max) throw fail('That photo is larger than ' + Math.round(max / 1048576) + ' MB.', 413);
   if ((await db.get('SELECT COUNT(*) AS n FROM photos WHERE card = ?', [row.id])).n >= limit('photosPerCarol')) throw fail('A carol holds up to ' + limit('photosPerCarol') + ' photos.', 409);
@@ -368,8 +390,10 @@ async function addPhoto(user, row, req) {
   const buf = await raw(req, max);
   if (buf.length < 32) throw fail('That is not a photo.');
   const kind = KINDS.find(function (k) { return k[2](buf); });
-  if (!kind) throw fail(buf.toString('latin1', 4, 12).indexOf('ftyp') === 0 ? 'That photo is in a format this cannot read yet (HEIC). Choose "Most Compatible" in your camera settings, or send a JPEG or PNG.' : 'Send a JPEG, PNG or WebP photo.', 415);
-  let small; try { small = await Render.resize(buf, limit('photoPx')); } catch (e) { throw fail('That photo could not be read. Try another.', 415); }
+  if (!kind) throw fail('Send a JPEG, PNG, WebP or HEIC photo.', 415);
+  // HEIC (an iPhone's own format) is not something the canvas reads: it is turned into a JPEG first, by a tool on this machine
+  let pixels = buf; if (kind[1] === 'heic') { try { pixels = await Render.heic(buf); } catch (e) { console.error('heic:', e.message); throw fail('That HEIC photo could not be converted here. In your camera settings choose "Most Compatible", or send a JPEG or PNG.', 415); } }
+  let small; try { small = await Render.resize(pixels, limit('photoPx')); } catch (e) { throw fail('That photo could not be read. Try another.', 415); }
   if (small.from.w * small.from.h > 120e6) throw fail('That photo is too large to work with.', 413);
   const pid = 'p' + rid(8), okey = 'cards/' + row.id + '/' + pid + '-o.' + kind[1], skey = 'cards/' + row.id + '/' + pid + '-s.jpg';
   await ST.put(okey, buf, kind[0]); await ST.put(skey, small.data, 'image/jpeg');
@@ -380,7 +404,7 @@ async function addPhoto(user, row, req) {
 }
 // THE AGENT WRITES (or rewrites) the carol. Free, and counted: per account per day, per carol, and carols drafted before a first purchase.
 async function write(user, row, b) {
-  if (!Agent.available()) throw fail('The writing agent is not set up.', 503);
+  if (!Agent.available()) throw fail(CLOSED.agent, 503);
   const doc = docOf(row), first = !doc.script, photos = await photosOf(row.id), tpl = Templates.get(row.template), occ = occasions().list.find(function (o) { return o.id === row.occasion; });
   if (!tpl) throw fail('That template is gone. Pick another.', 409);
   doc.answers = cleanAnswers(b.answers, doc.answers);
@@ -392,8 +416,8 @@ async function write(user, row, b) {
   catch (e) { if (e.usage) await db.run('INSERT INTO ledger (card, uid, kind, tok_in, tok_out, micros, detail, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [row.id, user.id, 'text', e.usage.tok_in, e.usage.tok_out, e.usage.micros, 'failed', now()]); if (e.said) throw fail(e.message, e.code); throw e; }
   await db.run('INSERT INTO ledger (card, uid, kind, tok_in, tok_out, micros, detail, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [row.id, user.id, 'text', out.usage.tok_in, out.usage.tok_out, out.usage.micros, out.refusal ? 'refused' : (first ? 'first take' : 'rewrite') + ' ' + str(out.request, 60), now()]);
   if (out.refusal) { await saveDoc(row, doc); return { refused: true, message: out.refusal }; }
-  const s = out.script;
-  doc.script = { title: s.title, greeting: s.greeting, signoff: s.signoff, lyrics: s.lyrics, music: s.music, scenes: s.scenes.map(function (x) { return { pid: photos[x.photo].id, caption: x.caption }; }) }; doc.note = s.note;
+  const s = out.script, was = {}; ((doc.script || {}).scenes || []).forEach(function (x) { was[x.pid] = x; });   // (how the maker placed each photo outlives a rewrite)
+  doc.script = { title: s.title, greeting: s.greeting, signoff: s.signoff, lyrics: s.lyrics, music: s.music, scenes: s.scenes.map(function (x) { const pid = photos[x.photo].id; return placed({ pid: pid, caption: x.caption }, was[pid]); }) }; doc.note = s.note;
   const more = first ? {} : { rewrites: (row.rewrites || 0) + 1 };
   if (!row.slug) more.slug = await freeSlug(slugify((doc.answers.from || doc.answers.to || s.title) + ' ' + new Date(now()).getUTCFullYear()), row.id);
   await saveDoc(row, doc, more); if (first) await note('written', row.id, user.id);
@@ -403,7 +427,7 @@ async function write(user, row, b) {
 async function askSong(user, row) {
   const doc = docOf(row);
   if (!doc.script || !(doc.script.lyrics || []).length) throw fail('Write the words first.', 409);
-  if (!Song.available()) throw fail('The music service is not set up.', 503);
+  if (!Song.available()) throw fail(CLOSED.music, 503); if (ST.broken()) throw fail(CLOSED.storage, 503);
   if (await db.get("SELECT id FROM jobs WHERE card = ? AND state IN ('queued', 'running')", [row.id])) throw fail('This carol is already being made.', 409);
   const takes = (await db.get('SELECT COUNT(*) AS n FROM takes WHERE card = ?', [row.id])).n;
   if (takes >= limit('takesPerCarol')) throw fail('This carol has had its ' + limit('takesPerCarol') + ' takes of the song. Pick the one you like best.', 409);
@@ -428,27 +452,59 @@ async function askRender(user, row, takeId) {
 
 // ---------- jobs: the song and the video are made in the background, one or two at a time, and are in the database:
 // a restart puts what was running back in the queue, and a song that was already paid for is not asked for twice ----------
-const J = { running: 0, on: false, idle: null, stops: {} };
+// A JOB IS CLAIMED WITH A LEASE, so two machines (or a machine and its own restart) never run one job twice: the
+// claim is one UPDATE that only one asker can win; whoever holds a job renews its lease while it works (beat); a
+// lease that ran out (the machine died) is what lets somebody else take the job; a machine that finds its lease
+// taken away stops and writes nothing more.
+const J = { running: 0, on: false, idle: null, stops: {}, me: env.FLY_MACHINE_ID || os.hostname() || 'local', lease: 60000, keepAwake: !!env.FLY_APP_NAME, awakeEvery: 20000, pings: 0, watched: {} };
+// WHEN A CAROL IS READY AND NOBODY IS WATCHING (its maker's page has not asked how it is going for 20 seconds: the tab
+// was closed), its maker is told by email, with a link back to it. Once for a job; never to an address that asked for no email.
+async function tellReady(job) {
+  if (J.watched[job.card] > now() - 20000 || !mail.on()) return false;
+  const row = await db.get('SELECT * FROM cards WHERE id = ?', [job.card]), u = row && await db.get('SELECT id, email, banned FROM users WHERE id = ?', [row.uid]);
+  if (!row || row.state !== 'ready' || !u || !u.email || u.banned) return false;
+  const doc = docOf(row), sent = await mail.sendReady({ id: row.id, slug: row.slug, title: (doc.script || {}).title, to: (doc.answers || {}).to }, u.email);
+  if (sent) await note('readymail', row.id, u.id); return sent;
+}
 const setJob = function (id, o) { const k = Object.keys(o); return db.run('UPDATE jobs SET ' + k.map(function (x) { return x + ' = ?'; }).join(', ') + ', updated = ? WHERE id = ?', k.map(function (x) { return o[x]; }).concat([now(), id])); };
-async function requeue() { await db.run("UPDATE jobs SET state = 'queued', stage = 'queued' WHERE state = 'running'"); }
+// at a start: what THIS machine was running goes back in the queue, and so does a job whose lease ran out; a job
+// another machine holds is left to it
+async function requeue(me) { await db.run("UPDATE jobs SET state = 'queued', stage = 'queued', owner = NULL, lease = NULL WHERE state = 'running' AND (owner = ? OR owner IS NULL OR lease IS NULL OR lease < ?)", [me || J.me, now()]); }
+// -> the job, now this machine's; null when there is nothing to take; false when somebody else took it first
+async function claim(me) {
+  const t = now(), next = await db.get("SELECT id FROM jobs WHERE state = 'queued' OR (state = 'running' AND lease < ?) ORDER BY created LIMIT 1", [t]); if (!next) return null;
+  return await db.get("UPDATE jobs SET state = 'running', tries = tries + 1, owner = ?, lease = ?, updated = ? WHERE id = ? AND (state = 'queued' OR (state = 'running' AND lease < ?)) RETURNING *", [me || J.me, t + J.lease, t, next.id, t]) || false;
+}
+async function beat(id, me) { return !!await db.get("UPDATE jobs SET lease = ? WHERE id = ? AND owner = ? AND state = 'running' RETURNING id", [now() + J.lease, id, me || J.me]); }
 function kick() { if (J.on) setImmediate(pump); }
 async function pump() {
   while (J.running < limit('jobsAtOnce')) {
-    const next = await db.get("SELECT id FROM jobs WHERE state = 'queued' ORDER BY created LIMIT 1"); if (!next) break;
-    const job = await db.get("UPDATE jobs SET state = 'running', tries = tries + 1, updated = ? WHERE id = ? AND state = 'queued' RETURNING *", [now(), next.id]); if (!job) continue;
+    const job = await claim(J.me); if (job === null) break; if (!job) continue;
     J.running++;
     runJob(job).catch(function (e) { console.error('job', job.id, e.message); }).finally(function () { J.running--; pump().catch(function (e) { console.error('jobs:', e.message); }); });
   }
 }
 async function drain() { for (;;) { await pump(); if (!J.running && !await db.get("SELECT id FROM jobs WHERE state = 'queued' LIMIT 1")) return; await new Promise(function (ok) { setTimeout(ok, 15); }); } }   // (the tests)
 async function runJob(job) {
+  const hb = setInterval(function () { beat(job.id, job.owner).then(function (mine) { if (!mine) job.lost = true; }, function () { /* the database blinked: the next beat says */ }); }, Math.max(50, J.lease / 4));
+  // THE MACHINE STOPS WHEN IT IS IDLE (fly.toml), and "idle" is judged by requests coming through Fly's proxy. A job
+  // has no request of its own once its maker has closed the page, so while a job runs the machine asks for its own
+  // /healthz through the public address: that is traffic, and it stays up until the job is done. If it is stopped
+  // anyway, the job is still this machine's in the database and is taken up again at the next start.
+  const up = J.keepAwake ? setInterval(function () { J.pings++; (seam.fetch || fetch)(SITE + '/healthz', { signal: AbortSignal.timeout(8000) }).then(function (r) { if (r && r.arrayBuffer) return r.arrayBuffer(); }).catch(function () { /* the next one */ }); }, J.awakeEvery) : null;
+  try { if (job.owner && !await beat(job.id, job.owner)) return; await runOwned(job); } finally { clearInterval(hb); clearInterval(up); }   // (a machine back from a long stall may find the job is no longer its own: it does nothing)
+}
+const lostCheck = function (job) { if (job.lost) throw Object.assign(new Error('the lease on this job was lost'), { stopped: true }); };
+async function runOwned(job) {
   try {
     const row = await db.get('SELECT * FROM cards WHERE id = ?', [job.card]);
     if (!row || row.state === 'deleted') throw Object.assign(new Error('the carol was deleted'), { final: true });
+    if (job.tries > 3) throw Object.assign(new Error('it was started ' + job.tries + ' times and never finished'), { final: true });
     if (job.kind === 'song') await songJob(job, row); else await renderJob(job, row, JSON.parse(job.args || '{}').take || row.take);
-    await setJob(job.id, { state: 'done', stage: 'done', pct: 100, error: '' });
+    lostCheck(job); await setJob(job.id, { state: 'done', stage: 'done', pct: 100, error: '', owner: null, lease: null });
+    await tellReady(job).catch(function (e) { console.error('ready email:', e.message); });
   } catch (e) {
-    if (e.stopped) return;   // the server is stopping: the job stays as it is and is queued again at the next start
+    if (e.stopped || job.lost) return;   // the server is stopping (the job is queued again at the next start), or the lease was lost (it is somebody else's now)
     const final = e.final || e.said || !(job.tries < 3);
     console.error('job', job.id, job.kind, 'try', job.tries, e.message);
     await setJob(job.id, final ? { state: 'failed', error: str(e.said ? e.message : 'It did not work this time. Try again: nothing more is charged.', 300), stage: 'failed' } : { state: 'queued', stage: 'queued', error: str(e.message, 300) });
@@ -469,7 +525,9 @@ async function songJob(job, row) {
     const rawKey = 'cards/' + row.id + '/raw-' + job.id + '.mp3', kept = await ST.read(rawKey);
     const audio = kept ? kept.data : await Song.compose(plan);
     if (!kept) await ST.put(rawKey, audio, 'audio/mpeg');
+    lostCheck(job);
     const fin = await Song.finish(audio, plan, tpl && tpl.music && tpl.music.bpm);
+    lostCheck(job);
     await ST.put(akey, fin.audio, 'audio/mp4');
     const n = (await db.get('SELECT COALESCE(MAX(n), 0) AS n FROM takes WHERE card = ?', [row.id])).n + 1;
     await db.run('INSERT INTO takes (id, card, n, job, akey, seconds, timing, words, peak, rms, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [id, row.id, n, job.id, akey, fin.timing.duration, JSON.stringify(fin.timing), JSON.stringify(args.lyrics), fin.levels.peak, fin.levels.rms, now()]);
@@ -492,7 +550,8 @@ async function renderJob(job, row, takeId) {
     const audio = await ST.read(take.akey); if (!audio) throw Object.assign(new Error('the song is gone'), { final: true });
     const af = path.join(dir, 'song.m4a'); fs.writeFileSync(af, audio.data);
     let last = 0;
-    const out = await Render.render({ card: e.card, images: images, audio: af, dir: dir, onProgress: async function (p) { if (J.stopping) return false; if (now() - last > 900) { last = now(); await setJob(job.id, { pct: 30 + Math.round(p * 0.68) }); } } });
+    const out = await Render.render({ card: e.card, images: images, audio: af, dir: dir, onProgress: async function (p) { if (J.stopping || job.lost) return false; if (now() - last > 900) { last = now(); await setJob(job.id, { pct: 30 + Math.round(p * 0.68) }); } } });
+    lostCheck(job);
     const put = { story: [out.story, 'mp4'], square: [out.square, 'mp4'], poster: [out.poster, 'jpg'], posterstory: [out.posterStory, 'jpg'], preview: [out.preview, 'gif'] }, stamp = rid(4);
     for (const kind of Object.keys(put)) {
       if (!put[kind][0]) continue;
@@ -503,6 +562,7 @@ async function renderJob(job, row, takeId) {
       if (was && was.mkey !== key) await ST.del(was.mkey).catch(function () { });
     }
     const secs = (now() - t0) / 1000;
+    await db.run('UPDATE cards SET rendered = ? WHERE id = ?', [renderKey(e, take.id), row.id]);   // what this video was made from: an edit after this makes the card "stale"
     await db.run('INSERT INTO ledger (card, uid, kind, units, micros, detail, at) VALUES (?, ?, ?, ?, 0, ?, ?)', [row.id, job.uid, 'render', secs, out.frames + ' frames', now()]);
     const cur = await db.get('SELECT state FROM cards WHERE id = ?', [row.id]);
     if (cur && cur.state === 'draft') { await db.run("UPDATE cards SET state = 'ready', updated = ? WHERE id = ?", [now(), row.id]); await note('ready', row.id, job.uid); }
@@ -523,9 +583,9 @@ function rebuild() { BUILD = buildOf(ROOT); pages = {}; return BUILD; }   // for
 function page(title, inner, code) {
   const B = CFG.brand;
   return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + esc(title) + ' · ' + esc(CFG.name) + '</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><style>' +
-    '@font-face{font-family:"CT Lobster";src:url(/fonts/Lobster-Regular.ttf)}body{margin:0;min-height:100vh;display:grid;place-items:center;background:' + B.night + ';color:' + B.cream + ';font:17px/1.5 Georgia,serif;text-align:center}main{max-width:440px;padding:32px 22px}' +
-    '.brand{display:inline-flex;align-items:center;gap:10px;color:' + B.cream + ';text-decoration:none;margin-bottom:26px}.brand b{font:400 30px "CT Lobster",Georgia,serif}h1{font:400 34px "CT Lobster",Georgia,serif;margin:0 0 10px}p{color:#d9c9e6;margin:0 0 16px}a{color:' + B.gold + '}b{color:' + B.cream + '}' +
-    '.btn,button.btn{display:inline-block;border:0;border-radius:999px;background:' + B.berry + ';color:#fff;font:700 17px system-ui,sans-serif;padding:15px 32px;text-decoration:none;cursor:pointer}</style></head><body><main><a href="/" class="brand">' + Brand.markSvg({ size: 38 }) + '<b>' + esc(CFG.name) + '</b></a>' + inner + '</main></body></html>';
+    '@font-face{font-family:"CT Lobster";src:url(/fonts/Lobster-Regular.ttf)}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(90% 60% at 80% 0%,rgba(194,24,91,.42),transparent 62%),radial-gradient(80% 60% at 10% 100%,rgba(242,182,50,.2),transparent 65%),' + B.night + ';color:' + B.cream + ';font:18px/1.5 Georgia,serif;text-align:center}main{width:min(480px,100% - 36px);box-sizing:border-box;padding:38px 26px 34px;border-radius:30px;background:rgba(255,248,238,.07);border:1px solid rgba(255,248,238,.2);box-shadow:0 30px 80px -30px rgba(0,0,0,.7)}' +
+    '.brand{display:inline-flex;align-items:center;gap:10px;color:' + B.cream + ';text-decoration:none;margin-bottom:22px}.brand b{font:400 30px "CT Lobster",Georgia,serif}h1{font:400 clamp(38px,11vw,50px)/1.08 "CT Lobster",Georgia,serif;margin:0 0 14px;color:' + B.gold + '}p{color:#e6d8f0;margin:0 0 18px}a{color:' + B.gold + '}b{color:' + B.cream + ';word-break:break-word}' +
+    '.btn,button.btn{display:inline-block;border:0;border-radius:999px;background:linear-gradient(180deg,#d81b68,' + B.berry + ');color:#fff;font:700 19px system-ui,sans-serif;padding:18px 40px;min-width:220px;box-sizing:border-box;text-decoration:none;cursor:pointer;box-shadow:0 14px 30px -12px rgba(194,24,91,.9)}form{margin:6px 0 0}</style></head><body><main><a href="/" class="brand">' + Brand.markSvg({ size: 38 }) + '<b>' + esc(CFG.name) + '</b></a>' + inner + '</main></body></html>';
 }
 const gone = function (res) { res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' }); res.end(page('Not here', '<h1>That card is not here</h1><p>It may have been taken down by the person who made it, or the link may be mistyped.</p><p><a class="btn" href="/">Make a carol of your own</a></p>')); };
 
@@ -578,7 +638,7 @@ function publicConfig() {
   const o = occasions();
   return { name: CFG.name, tagline: CFG.tagline, domain: CFG.domain, site: SITE, noun: CFG.noun, support: CFG.support, finalSale: CFG.finalSale, currency: CFG.currency, packs: CFG.packs.map(function (p) { return { id: p.id, credits: p.credits, cents: p.cents, label: p.label, soon: !(p.cents > 0) }; }),
     limits: { photos: limit('photosPerCarol'), photoBytes: limit('photoBytes'), takes: limit('takesPerCarol'), rewrites: limit('rewritesPerCarol'), freeDrafts: limit('freeDrafts'), recipients: limit('recipientsPerCarol'), lines: CFG.limits.lyricLines, lineChars: CFG.limits.lineChars, details: limit('detailsChars') },
-    video: { min: CFG.video.minSec, max: CFG.video.maxSec }, occasions: o.list.filter(function (x) { return x.state !== 'off'; }), featured: o.featured, payments: !!env.STRIPE_SECRET_KEY, agent: Agent.available(), music: Song.available(), email: mail.on() };
+    video: { min: CFG.video.minSec, max: CFG.video.maxSec }, occasions: o.list.filter(function (x) { return x.state !== 'off'; }), featured: o.featured, payments: !!env.STRIPE_SECRET_KEY, agent: Agent.available(), music: Song.available() && !ST.broken(), storage: !ST.broken(), email: mail.on(), closed: CLOSED };
 }
 let landingData = null;
 function landing() {
@@ -655,7 +715,7 @@ async function api(req, res, url) {
       if (!tpl || tplOff(tpl.id) || !occ || occ.state !== 'live') throw fail('Pick a template first.');
       if (!await spendDay(user.id, 'card', limit('carolsPerDay'))) throw fail('That is a lot of new carols for one day. Come back tomorrow, or finish one of your drafts.', 429);
       const id = 'c' + rid(9), doc = { v: DOC_V, answers: cleanAnswers(b.answers, {}), script: null };
-      await db.run('INSERT INTO cards (id, uid, slug, state, v, occasion, template, title, doc, created, updated) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)', [id, user.id, 'draft', DOC_V, tpl.occasion, tpl.id, '', JSON.stringify(doc), now(), now()]);
+      await db.run('INSERT INTO cards (id, uid, slug, state, v, occasion, template, title, doc, created, updated) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)', [id, user.id, 'draft', DOC_V, tpl.occasion, tpl.id, doc.answers.to ? 'For ' + doc.answers.to : '', JSON.stringify(doc), now(), now()]);
       await note('made', id, user.id);
       return { ok: true, card: await view(await db.get('SELECT * FROM cards WHERE id = ?', [id]), user) };
     });
@@ -666,7 +726,7 @@ async function api(req, res, url) {
   const act = req.method + ' ' + (m[2] || '') + (m[3] ? '/:x' : ''), again = async function () { return { ok: true, card: await view(await db.get('SELECT * FROM cards WHERE id = ?', [row.id]), user) }; };
   try {
     if (act === 'GET ') return json(res, { card: await view(row, user) });
-    if (act === 'GET status') { const v = await view(row, user); return json(res, { state: v.state, job: v.job, media: v.media, take: v.take, takes: v.takes, takesLeft: v.takesLeft, url: v.url, v: v.v, engine: v.job ? undefined : v.engine }); }
+    if (act === 'GET status') { J.watched[row.id] = now(); const v = await view(row, user); return json(res, { state: v.state, job: v.job, media: v.media, take: v.take, takes: v.takes, takesLeft: v.takesLeft, url: v.url, v: v.v, mv: v.mv, stale: v.stale, engine: v.job ? undefined : v.engine }); }
     if (act === 'GET photos/:x') { const ph = await db.get('SELECT skey FROM photos WHERE id = ? AND card = ?', [m[3], row.id]); return sendStored(req, res, ph && ph.skey, { cache: 'private, max-age=86400', type: 'image/jpeg' }); }
     if (act === 'GET song/:x') { const t = await db.get('SELECT akey FROM takes WHERE id = ? AND card = ?', [m[3], row.id]); return sendStored(req, res, t && t.akey, { cache: 'private, max-age=86400' }); }
     if (act === 'POST photos') return json(res, { ok: true, photo: await locked('photos ' + row.id, function () { return addPhoto(user, row, req); }) });
@@ -807,8 +867,22 @@ async function check(o) {
   const done = function () { lines.push(failed.length ? 'CHECK FAILED: ' + failed.length + ' thing' + (failed.length > 1 ? 's' : '') + ' wrong. Nothing was changed; do not deploy this build.' : 'CHECK PASSED'); return { ok: !failed.length, lines: lines, failed: failed }; };
   const sources = o.sources || Object.fromEntries(SERVER_FILES.map(function (f) { return [f, fs.readFileSync(path.join(__dirname, f), 'utf8')]; }));
   lines.push('checking build ' + BUILD + ' against ' + (db.postgres ? 'Postgres' + (env.DB_SCHEMA ? ' (schema ' + env.DB_SCHEMA + ')' : '') : 'a SQLite file under ' + dataDir));
+  // WHAT STOPS A DEPLOY: only what makes the site unusable (no database, no session secret on the live machine, a
+  // schema or a statement that would not run). A feature whose secret is missing is OFF, and is said so: the site
+  // boots without it and says "not open yet" where it would have been.
+  const off = function (what, names) { lines.push('off:  ' + what + ' (no ' + names + ')'); };
   if (!db.postgres && env.FLY_APP_NAME) no('DATABASE_URL is not set on this machine: every carol would be in a file that is thrown away');
-  if (ST.broken()) no('storage: ' + ST.broken()); else if (!ST.remote() && env.FLY_APP_NAME) no('the R2 settings are not set on this machine: photos and videos would be in a folder that is thrown away'); else ok('media is kept in ' + ST.where());
+  if (!env.SESSION_SECRET && env.FLY_APP_NAME) no('SESSION_SECRET is not set on this machine: nobody could sign in');
+  else if (!env.SESSION_SECRET) off('signing in, and the admin', 'SESSION_SECRET'); else ok('sessions are signed');
+  if (ST.broken()) lines.push('off:  photos, songs and videos: ' + ST.broken()); else ok('media is kept in ' + ST.where());
+  if (env.STRIPE_SECRET_KEY) ok('payments (' + (/^(sk|rk)_live_/.test(env.STRIPE_SECRET_KEY) ? 'LIVE' : 'test') + ' mode)'); else off('payments: the pay sheet says purchases open soon; the admin can grant credits', 'STRIPE_SECRET_KEY');
+  if (env.GOOGLE_CLIENT_ID) ok('Google sign-in'); else off('Google sign-in: only the emailed link is offered', 'GOOGLE_CLIENT_ID');
+  if (env.RESEND_API_KEY) ok('email (the sign-in link, a carol by email, "your carol is ready")'); else off('email: no sign-in link, no carol by email', 'RESEND_API_KEY');
+  if (!env.GOOGLE_CLIENT_ID && !env.RESEND_API_KEY) lines.push('off:  there is NO way to sign in until GOOGLE_CLIENT_ID or RESEND_API_KEY is set');
+  if (env.ANTHROPIC_API_KEY && env.CLAUDE_MODEL) ok('the writing agent'); else off('the writing agent: writing a carol is closed, with a sentence', [!env.ANTHROPIC_API_KEY && 'ANTHROPIC_API_KEY', !env.CLAUDE_MODEL && 'CLAUDE_MODEL'].filter(Boolean).join(', '));
+  if (env.ELEVENLABS_API_KEY && env.ELEVEN_MUSIC_MODEL) ok('the music service'); else off('the music service: making the song is closed, with a sentence', [!env.ELEVENLABS_API_KEY && 'ELEVENLABS_API_KEY', !env.ELEVEN_MUSIC_MODEL && 'ELEVEN_MUSIC_MODEL'].filter(Boolean).join(', '));
+  if (env.ADMIN_PASSWORD) ok('the admin\'s password'); else off('the admin\'s password (the admin can still sign in as ' + ADMINS.join(', ') + ')', 'ADMIN_PASSWORD');
+  if (String(env.ADMIN_MCP_KEY || '').length >= 24) ok('the admin\'s connector'); else off('the admin\'s connector', 'ADMIN_MCP_KEY of 24 characters or more');
   let words = 0;
   Object.keys(sources).forEach(function (f) {
     const at = sources[f].replace(/cleanup:begin[\s\S]*?cleanup:end/g, function (m) { return m.replace(/[^\n]/g, ''); }).split('\n').map(function (l, i) { return WORDS.test(l) ? i + 1 : 0; }).filter(Boolean);
@@ -833,11 +907,14 @@ async function check(o) {
   return done();
 }
 function shutdown() { J.stopping = true; setTimeout(function () { process.exit(0); }, 4000).unref(); }
+// AT A START, without waiting for any request: what this machine was running when it stopped goes back in the queue
+// and is run; and every 15 s the queue is looked at again (how a job whose machine died, and whose lease ran out, is taken up).
+function boot() { return ready.then(function () { return requeue(); }).then(function () { J.on = true; setInterval(function () { pump().catch(function (e) { console.error('jobs:', e.message); }); }, 15000).unref(); return pump(); }); }
 
-module.exports = { handle: handle, db: db, ready: ready, check: check, buildOf: buildOf, rebuild: rebuild, build: function () { return BUILD; }, ROUTES: ROUTES, CLIENT: PAGES.concat(SCRIPTS), ST: ST, Admin: Admin, mail: mail, seam: seam, jobs: { drain: drain, requeue: requeue, pump: pump, state: J }, loadSettings: loadSettings, occasions: occasions, slugProblem: slugProblem, slugify: slugify, balance: balance, grant: grant, settle: settle, docOf: docOf, engineCard: engineCard, publicCard: publicCard, DOC_V: DOC_V };
+module.exports = { boot: boot, shutdown: shutdown, handle: handle, db: db, ready: ready, check: check, buildOf: buildOf, rebuild: rebuild, build: function () { return BUILD; }, ROUTES: ROUTES, CLIENT: PAGES.concat(SCRIPTS), ST: ST, Admin: Admin, mail: mail, seam: seam, jobs: { drain: drain, requeue: requeue, pump: pump, claim: claim, beat: beat, run: runJob, state: J }, renderKey: renderKey, loadSettings: loadSettings, occasions: occasions, slugProblem: slugProblem, slugify: slugify, balance: balance, grant: grant, settle: settle, docOf: docOf, engineCard: engineCard, publicCard: publicCard, DOC_V: DOC_V };
 if (require.main === module && process.argv.indexOf('--check') >= 0) check().then(function (r) { console.log(r.lines.join('\n')); process.exit(r.ok ? 0 : 1); }, function (e) { console.error('CHECK FAILED: ' + e.message); process.exit(1); });
 else if (require.main === module) http.createServer(handle).listen(+env.PORT || 8080, function () {
-  ready.then(requeue).then(function () { J.on = true; return pump(); }).catch(function (e) { console.error('the database is not ready: ' + e.message); process.exit(1); });
+  boot().catch(function (e) { console.error('the database is not ready: ' + e.message); process.exit(1); });
   process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown);
   console.log(CFG.name + ' is up, build ' + BUILD + '; media in ' + ST.where());
   if (!env.DATABASE_URL) console.warn('DATABASE_URL is not set: keeping everything in a SQLite file under ' + dataDir);

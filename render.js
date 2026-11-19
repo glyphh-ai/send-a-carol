@@ -8,7 +8,7 @@ const cp = require('child_process'), fs = require('fs'), path = require('path');
 const canvas = require('@napi-rs/canvas');
 const Engine = require('./engine.js'), Fonts = require('./fonts.js'), CFG = require('./config.js');
 
-const seam = { ffmpeg: process.env.FFMPEG || 'ffmpeg' };
+const seam = { ffmpeg: process.env.FFMPEG || 'ffmpeg', heif: process.env.HEIF_CONVERT || 'heif-convert' };
 let fontsIn = false;
 const fonts = function () { if (!fontsIn) { Fonts.registerNode(canvas, path.join(__dirname, 'fonts')); fontsIn = true; } };
 const tick = function () { return new Promise(function (ok) { setImmediate(ok); }); };
@@ -69,4 +69,22 @@ async function resize(buffer, px) {
   const cv = canvas.createCanvas(w, h), ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
   return { data: await cv.encode('jpeg', 86), w: w, h: h, from: { w: img.width, h: img.height } };
 }
-module.exports = { render: render, resize: resize, pictures: pictures, fonts: fonts, seam: seam, canvas: canvas };
+// A HEIC photo (an iPhone's own format) as a JPEG buffer. The canvas library cannot read HEIC, so a tool does it:
+// heif-convert (Debian's libheif-examples: it is in the Docker image), and on a Mac without it, sips (part of macOS).
+// Throws when neither is here or neither can read the file; the caller says so in a sentence.
+function run(cmd, args) { return new Promise(function (ok, no) { cp.execFile(cmd, args, { timeout: 30000 }, function (e) { if (e) no(e); else ok(); }); }); }
+async function heic(buffer) {
+  const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'sac-heic-')), src = path.join(dir, 'in.heic'), out = path.join(dir, 'out.jpg'), tools = [[seam.heif, ['-q', '92', src, out]]];
+  if (process.platform === 'darwin') tools.push(['sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '92', src, '--out', out]]);
+  try {
+    fs.writeFileSync(src, buffer); let last = null;
+    for (const t of tools) {
+      try { await run(t[0], t[1]); } catch (e) { last = e; continue; }
+      // (a file that holds more than one picture comes out as out-1.jpg, out-2.jpg...: the largest is the photo)
+      const made = fs.readdirSync(dir).filter(function (f) { return /^out.*\.jpg$/.test(f); }).map(function (f) { return fs.readFileSync(path.join(dir, f)); }).sort(function (a, b) { return b.length - a.length; });
+      if (made.length && made[0].length > 100) return made[0];
+    }
+    throw new Error('no tool could convert it' + (last ? ': ' + String(last.message).split('\n')[0].slice(0, 160) : ''));
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+}
+module.exports = { render: render, resize: resize, heic: heic, pictures: pictures, fonts: fonts, seam: seam, canvas: canvas };

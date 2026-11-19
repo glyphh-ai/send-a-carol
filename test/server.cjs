@@ -4,7 +4,7 @@
 // outside, a fresh database and a fresh folder. One real render (small frames, section 6); every other carol here
 // is "rendered" by a stand-in that writes small files, so the run stays short. No port, no network.
 process.env.CONFIG_OVERRIDE = JSON.stringify({ video: { sizes: { story: [270, 480], square: [270, 270] } } });
-const assert = require('node:assert'), fs = require('fs'), path = require('path'), cp = require('child_process'), crypto = require('crypto');
+const assert = require('node:assert'), fs = require('fs'), path = require('path'), cp = require('child_process'), crypto = require('crypto'), os = require('os');
 const K = require('./kit.cjs');
 
 let checks = 0, part = 0;
@@ -120,15 +120,15 @@ const T0 = Date.now();
   });
 
   await section('2. Card names', async function () {
-    ['the-timmermans-2026', 'abc', 'a1b', 'x'.repeat(40), 'june-and-co', '2026', 'a-b-c-d'].forEach(function (s) { eq(S.slugProblem(s), '', s + ' is a good name'); });
+    ['the-hollisters-2026', 'abc', 'a1b', 'x'.repeat(40), 'june-and-co', '2026', 'a-b-c-d'].forEach(function (s) { eq(S.slugProblem(s), '', s + ' is a good name'); });
     [['ab', 'too short'], ['x'.repeat(41), 'too long'], ['Abc', 'a capital'], ['a_b', 'an underscore'], ['a b', 'a space'], ['a.b', 'a dot'], ['a/b', 'a slash'], ['-abc', 'a leading hyphen'], ['abc-', 'a trailing hyphen'], ['a--b', 'a double hyphen'], ['café', 'an accent'], ['', 'empty'], [null, 'null'], [123, 'a number'], ['abc\n', 'a newline'],
       ['app.js', 'a file'], ['style.css', 'a file'], ['index.html', 'a file'], ['robots.txt', 'a file'], ['favicon.ico', 'a file'], ['sitemap.xml', 'a file'], ['og.png', 'a file']].forEach(function (x) { ok(S.slugProblem(x[0]), x[1] + ' is refused: ' + JSON.stringify(x[0])); ok(/^[A-Z].*\.$/.test(S.slugProblem(x[0])), 'with a sentence'); });
     ['legal', 'admin', 'api', 'mcp', 'make', 'gallery', 'pricing', 'about', 'help', 'login', 'healthz', 'assets', 'fonts', 'examples'].forEach(function (w) { ok(CFG.reserved.indexOf(w) >= 0, 'config.reserved has ' + w); });
     const who = await maker(200, 'names@example.test', 0), other = await maker(201, 'names2@example.test', 0);
     for (const w of CFG.reserved) { ok(S.slugProblem(w), 'reserved: ' + w); const r = await GET('/api/slug?s=' + w); ok(r.json.ok === false && r.json.why, '/api/slug refuses ' + w); }
     // the suggestion, and the second one
-    const a = await T.carol(who, { song: false, photos: 0 }); eq(a.slug, 'the-timmermans-' + YEAR, 'the suggested name'); ok(/^the-timmermans-\d{4}$/.test(a.slug));
-    const b = await T.carol(other, { song: false, photos: 0 }); eq(b.slug, 'the-timmermans-' + YEAR + '-2', 'the second card of that name gets -2');
+    const a = await T.carol(who, { song: false, photos: 0 }); eq(a.slug, 'the-hollisters-' + YEAR, 'the suggested name'); ok(/^the-hollisters-\d{4}$/.test(a.slug));
+    const b = await T.carol(other, { song: false, photos: 0 }); eq(b.slug, 'the-hollisters-' + YEAR + '-2', 'the second card of that name gets -2');
     const c = await T.carol(other, { song: false, photos: 0, answers: { from: '', to: 'Café & Co!' } }); eq(c.slug, 'cafe-and-co-' + YEAR, 'a name from who it is for, made plain');
     // the live check
     let r = await GET('/api/slug?s=June-Bug-2026'); eq(r.json.slug, 'june-bug-2026', 'the check lowers the case'); eq(r.json.ok, true, 'a free name is ok'); eq(r.json.why, '');
@@ -140,7 +140,7 @@ const T0 = Date.now();
     for (const w of ['api', 'mcp', 'make', 'legal', 'healthz', 'assets']) eq((await save(b, other, w)).status, 400, w + ' cannot be saved as a name');
     eq((await GET('/api/cards/' + b.id, other)).json.card.slug, b.slug, 'and the name is as it was');
     r = await save(a, who, 'June-Bug-2026'); eq(r.status, 200); eq(r.json.card.slug, 'june-bug-2026', 'a draft\'s name can change'); eq(r.json.card.url, SITE + '/june-bug-2026');
-    eq((await save(b, other, 'the-timmermans-' + YEAR)).status, 200, 'and the name it left is free');
+    eq((await save(b, other, 'the-hollisters-' + YEAR)).status, 200, 'and the name it left is free');
     // ... until it is shared
     eq((await POST('/api/cards/' + a.id + '/share', {}, who)).status, 409, 'a draft cannot be shared');
     await S.grant('google:200', 1, 'test', 'test:names'); eq((await POST('/api/cards/' + a.id + '/song', {}, who)).status, 200); await S.jobs.drain();
@@ -153,7 +153,7 @@ const T0 = Date.now();
   await section('3. The card script', async function () {
     const who = await maker(300, 'script@example.test', 0), uid = 'google:300', other = await maker(301, 'script2@example.test', 0);
     const led = function (card) { return db.all('SELECT kind, tok_in, tok_out, micros, detail FROM ledger WHERE card = ? ORDER BY id', [card]); };
-    const draft = async function (w, answers) { const r = await POST('/api/cards', { template: TPL.id, answers: Object.assign({ to: 'Grandma June', from: 'Script Family', details: 'Biscuit the dog ate the gingerbread house.' }, answers) }, w); eq(r.status, 200, 'a draft is made'); return r.json.card; };
+    const draft = async function (w, answers) { const r = await POST('/api/cards', { template: TPL.id, answers: Object.assign({ to: 'Grandma Dot', from: 'Script Family', details: 'Waffles the dog ate the gingerbread house.' }, answers) }, w); eq(r.status, 200, 'a draft is made'); return r.json.card; };
     // what is asked of the agent
     let card = await draft(who); eq(card.script, null, 'a new draft has no script'); eq(card.state, 'draft'); eq(card.slug, '');
     for (let i = 0; i < 3; i++) eq((await upload(card.id, pic('image/jpeg', 300, 400, i * 90), 'image/jpeg', who)).status, 200);
@@ -170,12 +170,12 @@ const T0 = Date.now();
     ok(!/christmas|xmas|santa/i.test(q.system), 'the rules assume no Christmas'); ok(/do not mention snow, winter or a holiday unless/.test(q.system), 'and say so');
     const occ = CFG.occasions.find(function (o) { return o.id === TPL.occasion; });
     ok(brief.indexOf('OCCASION: ' + occ.name) >= 0, 'the brief carries the occasion'); ok(brief.indexOf('TODAY: ' + TODAY) >= 0, 'today\'s date'); ok(brief.indexOf('Tone: ' + String(TPL.tone || TPL.blurb).slice(0, 80)) >= 0, 'the template\'s tone');
-    ok(brief.indexOf('FOR: Grandma June') >= 0 && brief.indexOf('FROM: Script Family') >= 0 && brief.indexOf('Biscuit the dog') >= 0, 'who it is for and the details'); ok(brief.indexOf('PHOTOS: 3 uploaded') >= 0 && brief.indexOf('photo 1: Grandpa Joe by the truck') >= 0, 'the photos and their notes');
+    ok(brief.indexOf('FOR: Grandma Dot') >= 0 && brief.indexOf('FROM: Script Family') >= 0 && brief.indexOf('Waffles the dog') >= 0, 'who it is for and the details'); ok(brief.indexOf('PHOTOS: 3 uploaded') >= 0 && brief.indexOf('photo 1: Grandpa Joe by the truck') >= 0, 'the photos and their notes');
     ok(brief.indexOf('ANOTHER TAKE') < 0 && brief.indexOf('TAKE SO FAR') < 0, 'a first write asks for no other take');
-    const bd = Agent.brief({ occasion: { name: 'Birthday' }, today: '2026-07-04', template: { name: 'Cake', family: 'kids', tone: 'Silly and sweet.', music: { bpm: 120 } }, answers: { to: 'Theo' }, photos: [] });
+    const bd = Agent.brief({ occasion: { name: 'Birthday' }, today: '2026-07-04', template: { name: 'Cake', family: 'kids', tone: 'Silly and sweet.', music: { bpm: 120 } }, answers: { to: 'Milo' }, photos: [] });
     ok(/OCCASION: Birthday/.test(bd) && /TODAY: 2026-07-04/.test(bd) && /Tone: Silly and sweet\./.test(bd) && !/christmas/i.test(bd), 'a birthday brief has nothing of Christmas in it');
     card = r.json.card; const first = card.script;
-    eq(first.title, 'A Carol for Grandma June'); eq(first.lyrics.length, 2); eq(first.scenes.length, 3, 'a scene for each photo'); eq(first.scenes.map(function (x) { return x.pid; }).join(), pids.join(), 'scenes name the photos'); eq(card.rewrites, 0); ok(card.note, 'the agent\'s note');
+    eq(first.title, 'A Carol for Grandma Dot'); eq(first.lyrics.length, 2); eq(first.scenes.length, 3, 'a scene for each photo'); eq(first.scenes.map(function (x) { return x.pid; }).join(), pids.join(), 'scenes name the photos'); eq(card.rewrites, 0); ok(card.note, 'the agent\'s note');
     let L = await led(card.id); eq(L.length, 1, 'one ledger line for the call'); eq(L[0].kind, 'text'); eq(L[0].tok_in, 1200); eq(L[0].tok_out, 600); eq(L[0].micros, 1200 * CFG.cost.textInPerMTok + 600 * CFG.cost.textOutPerMTok, 'micro-dollars = tokens x config prices'); ok(/^first take/.test(L[0].detail));
     eq(JSON.stringify(Agent.costOf({ input_tokens: 10, cache_read_input_tokens: 5, cache_creation_input_tokens: 5, output_tokens: 3 })), JSON.stringify({ tok_in: 20, tok_out: 3, micros: 20 * CFG.cost.textInPerMTok + 3 * CFG.cost.textOutPerMTok }), 'cached tokens are counted');
     eq(Agent.costOf({ iterations: [{ input_tokens: 1, output_tokens: 1 }, { input_tokens: 2, output_tokens: 2 }] }).tok_in, 3, 'and every attempt');
@@ -270,11 +270,22 @@ const T0 = Date.now();
     }
     eq(dirOf(card.id).length, 6, 'two objects a photo');
     // what is not a photo
-    const heic = Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypheic'), Buffer.alloc(200, 1)]); let r = await upload(card.id, heic, 'image/heic', who); eq(r.status, 415, 'HEIC is refused'); ok(/HEIC/.test(r.json.error) && /JPEG or PNG/.test(r.json.error), 'kindly: ' + r.json.error);
-    r = await upload(card.id, crypto.randomBytes(500), 'image/jpeg', who); eq(r.status, 415, 'garbage is refused'); ok(/JPEG, PNG or WebP/.test(r.json.error));
+    const heic = Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypheic'), Buffer.alloc(200, 1)]); let r = await upload(card.id, heic, 'image/heic', who); eq(r.status, 415, 'a HEIC that no tool can convert is refused'); ok(/HEIC/.test(r.json.error) && /JPEG or PNG/.test(r.json.error), 'with a sentence: ' + r.json.error);
+    r = await upload(card.id, crypto.randomBytes(500), 'image/jpeg', who); eq(r.status, 415, 'garbage is refused'); ok(/JPEG, PNG, WebP or HEIC/.test(r.json.error));
     r = await upload(card.id, Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), crypto.randomBytes(400)]), 'image/jpeg', who); eq(r.status, 415, 'a broken JPEG is refused'); ok(/could not be read/.test(r.json.error));
     r = await upload(card.id, Buffer.from('tiny'), 'image/png', who); eq(r.status, 400, 'a few bytes are not a photo'); r = await upload(card.id, Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'), 'image/svg+xml', who); eq(r.status, 415, 'an SVG is refused');
     eq(dirOf(card.id).length, 6, 'and none of that was kept'); eq((await GET('/api/cards/' + card.id, who)).json.card.photos.length, 3);
+    // a real HEIC (an iPhone's own format), made here by macOS's sips, is converted on the server by the tool this machine has
+    // (heif-convert in the Docker image, sips on a Mac). Where there is no tool to make one, this is said and skipped.
+    const hdir = fs.mkdtempSync(path.join(os.tmpdir(), 'sac-heic-test-')), hpng = path.join(hdir, 'a.png'), hfile = path.join(hdir, 'a.heic'); fs.writeFileSync(hpng, pic('image/png', 1200, 900, 40));
+    const made = cp.spawnSync('sips', ['-s', 'format', 'heic', hpng, '--out', hfile]);
+    if (made.status === 0 && fs.existsSync(hfile)) {
+      const hb = fs.readFileSync(hfile); eq(hb.toString('latin1', 4, 8), 'ftyp', 'sips made a HEIC'); r = await upload(card.id, hb, 'image/heic', who); eq(r.status, 200, 'a real HEIC is accepted: ' + r.text);
+      const hp = r.json.photo; eq(hp.w, 1200, 'at its own size'); eq(hp.h, 900); const hs = await GET(hp.url, who); eq(hs.heads['content-type'], 'image/jpeg', 'its working copy is a JPEG'); const him = await canvas.loadImage(hs.body); eq(him.width, 1200);
+      ok(fs.readFileSync(path.join(STORE, CFG.app, 'cards', card.id, hp.id + '-o.heic')).equals(hb), 'and the original HEIC is kept as it came');
+      eq((await DEL('/api/cards/' + card.id + '/photos/' + hp.id, who)).status, 200); eq(dirOf(card.id).length, 6, 'removed again');
+    } else console.log('   (SKIPPED: no sips here to make a HEIC file; the conversion itself is checked in the Docker image by tools/dockercheck.cjs)');
+    fs.rmSync(hdir, { recursive: true, force: true });
     // too large (the limit is lowered for the test through the admin's own tool)
     eq((await GET('/api/me')).json.config.limits.photoBytes, 25 * 1024 * 1024, 'the limit is 25 MB'); await admin('admin_limit', { name: 'photoBytes', value: 3 * 1048576, reason: 'the test lowers it' });
     const noise = function (w) { const cv = canvas.createCanvas(w, w), c = cv.getContext('2d'), d = c.createImageData(w, w); crypto.randomFillSync(d.data); c.putImageData(d, 0, 0); return cv.toBuffer('image/png'); }, big = noise(1100);
@@ -312,7 +323,7 @@ const T0 = Date.now();
     again = await song(c.id, key()); eq(again.status, 409, 'a new key while the job waits'); ok(/already being made/.test(again.json.error));
     eq((await jobs(c.id)).length, 1, 'one job'); eq(await bal(), 1, 'still one credit spent'); let L = await log(); eq(L.filter(function (x) { return x.delta === -1; }).length, 1, 'one spend in credit_log'); eq(L[1].ref, 'carol:' + c.id); eq(await sum(), await bal(), 'the balance is the sum of credit_log');
     eq((await GET('/api/me', who)).json.user.credits, 1); eq(F.music.length, m0, 'the music service is not asked before the job runs');
-    let st = (await GET('/api/cards/' + c.id + '/status', who)).json; eq(Object.keys(st).sort().join(), 'job,media,state,take,takes,takesLeft,url,v', 'status while a job waits (no engine card)'); eq(st.state, 'draft'); eq(st.takesLeft, 3);
+    let st = (await GET('/api/cards/' + c.id + '/status', who)).json; eq(Object.keys(st).sort().join(), 'job,media,mv,stale,state,take,takes,takesLeft,url,v', 'status while a job waits (no engine card)'); eq(st.state, 'draft'); eq(st.takesLeft, 3);
     await S.jobs.drain(); c = await view(c.id); eq(c.state, 'ready', 'the carol is ready'); eq(c.job, null); eq(c.takes.length, 1); eq(c.take, c.takes[0].id); eq(c.takesLeft, 2); eq(F.music.length, m0 + 1, 'one song was asked for');
     eq(c.media.sort().join(), 'poster,posterstory,preview,square,story'); ok(c.engine.timing && c.engine.timing.lines.length === 6 && c.engine.timing.bpm > 0, 'the engine card has the song\'s timing'); eq(c.v, c.take);
     st = (await GET('/api/cards/' + c.id + '/status', who)).json; ok(st.engine && st.engine.timing, 'status carries the engine card when no job runs'); eq(st.url, SITE + '/' + c.slug);
@@ -374,6 +385,45 @@ const T0 = Date.now();
     j = await jobOf(j2); eq(j.state, 'failed', 'deleting a carol fails its waiting job'); ok(/deleted/.test(j.error)); await db.run("UPDATE jobs SET state = 'queued', error = '' WHERE id = ?", [j2]);   // (as if it had been picked up at that very moment)
     const m1 = F.music.length; await S.jobs.drain(); j = await jobOf(j2); eq(j.state, 'failed', 'a job for a deleted carol fails'); eq(j.tries, 1, 'without a retry'); eq(F.music.length, m1, 'and asks for no song'); eq(walk(path.join(STORE, CFG.app, 'cards', d.id)).length, 0, 'and leaves no file');
 
+    // THE LEASE: one job, two machines. One claim wins; another machine's start leaves a held job alone; the holder
+    // renews; when the holder dies its lease runs out and the other takes the job; the first, back from its stall,
+    // does nothing; a machine's own restart puts its job back. In all of it the song is asked for (and paid for) once.
+    const e = await T.carol(side, { song: false, photos: 1, answers: { from: 'Lease Family' } }); r = await song(e.id, side); eq(r.status, 200); const j3 = r.json.job, m3 = F.music.length;
+    const both = await Promise.all([S.jobs.claim('machine-a'), S.jobs.claim('machine-b')]), won = both.filter(Boolean);
+    eq(won.length, 1, 'two machines ask at the same moment: one gets the job'); eq(won[0].id, j3); const A = won[0].owner, B = A === 'machine-a' ? 'machine-b' : 'machine-a'; eq(won[0].tries, 1);
+    eq(await S.jobs.claim(B), null, 'the other machine finds nothing to take'); eq(await S.jobs.claim(A), null, 'and the holder does not take it twice');
+    await S.jobs.requeue(B); j = await jobOf(j3); eq(j.state, 'running', 'another machine starting leaves a held job alone'); eq(j.owner, A); ok(j.lease > Date.now() + 30000 && j.lease <= Date.now() + 60000, 'held for a minute');
+    await db.run('UPDATE jobs SET lease = ? WHERE id = ?', [Date.now() + 5000, j3]); ok(await S.jobs.beat(j3, A), 'the holder renews its lease'); ok((await jobOf(j3)).lease > Date.now() + 30000, 'to a minute from now'); eq(await S.jobs.beat(j3, B), false, 'nobody else can renew it');
+    await S.jobs.drain(); eq(F.music.length, m3, 'the queue of this process does not run a job another machine holds');
+    await db.run('UPDATE jobs SET lease = ? WHERE id = ?', [Date.now() - 1, j3]);   // the holder died: its lease ran out
+    const taken = await S.jobs.claim(B); eq(taken && taken.id, j3, 'a job whose lease ran out is taken by the other machine'); eq(taken.owner, B); eq(taken.tries, 2); eq(await S.jobs.beat(j3, A), false, 'the first holder has lost it');
+    await S.jobs.run(won[0]); eq(F.music.length, m3, 'the first holder, back from its stall, asks for no song'); j = await jobOf(j3); eq(j.state, 'running', 'and changes nothing'); eq(j.owner, B); eq(await count('SELECT COUNT(*) AS n FROM takes WHERE card = ?', [e.id]), 0);
+    await S.jobs.requeue(B); j = await jobOf(j3); eq(j.state, 'queued', 'the holder\'s own restart puts its job back'); eq(j.owner, null); eq(j.lease, null);
+    await S.jobs.drain(); j = await jobOf(j3); eq(j.state, 'done', 'and it is finished'); eq(j.tries, 3); eq(j.owner, null, 'held by nobody once it is done');
+    eq(F.music.length, m3 + 1, 'ONE song was asked for, through two machines and a restart'); eq(await count('SELECT COUNT(*) AS n FROM takes WHERE card = ?', [e.id]), 1, 'one take'); eq(await count("SELECT COUNT(*) AS n FROM ledger WHERE card = ? AND kind = 'music'", [e.id]), 1, 'one music line');
+    eq(await count("SELECT COUNT(*) AS n FROM credit_log WHERE ref LIKE ?", ['carol:' + e.id + '%']), 1, 'one credit'); eq((await GET('/api/cards/' + e.id, side)).json.card.state, 'ready');
+    // a job that was started four times and never finished is not started a fifth
+    const g = await T.carol(side, { song: false, photos: 0, answers: { from: 'Stuck Family' } }); r = await song(g.id, side); eq(r.status, 200); await db.run('UPDATE jobs SET tries = 3 WHERE id = ?', [r.json.job]); const m4 = F.music.length;
+    await S.jobs.drain(); j = await jobOf(r.json.job); eq(j.state, 'failed', 'a job started again and again is given up on'); eq(F.music.length, m4, 'with no song asked for'); eq(await S.balance(sideUid), 1, 'and its credit given back');
+
+    // THE CARD KNOWS when its video is older than its last edit ("Update the video" is offered from this, not from the page's memory)
+    const sv = async function (id, body) { const x = await POST('/api/cards/' + id + '/save', body, side, { 'idempotency-key': key() }); eq(x.status, 200, x.text); return x.json.card; };
+    let v = (await GET('/api/cards/' + e.id, side)).json.card; eq(v.stale, false, 'a carol just made is up to date'); ok(v.mv && v.mv !== '0', 'and says which video it has');
+    const ph = v.script.scenes[0], cap0 = ph.caption;
+    v = await sv(e.id, { script: { scenes: [{ pid: ph.pid, caption: 'A new caption' }] } }); eq(v.stale, true, 'a caption changed: the video is older than the card');
+    v = await sv(e.id, { script: { scenes: [{ pid: ph.pid, caption: cap0 }] } }); eq(v.stale, false, 'changed back: it is the video of this card again');
+    v = await sv(e.id, { script: { scenes: [{ pid: ph.pid, caption: cap0, fit: [0.25, 0.4, 1.8], solo: true }] } }); eq(v.stale, true, 'the photo was moved in its frame: stale');
+    eq(JSON.stringify(v.script.scenes[0]), JSON.stringify({ pid: ph.pid, caption: cap0, fit: [0.25, 0.4, 1.8], solo: 1 }), 'the placing is kept with the photo'); eq(JSON.stringify(v.engine.scenes[0].fit), '[0.25,0.4,1.8]', 'and given to the engine'); eq(v.engine.scenes[0].solo, 1); eq(v.engine.scenes[0].ar, 0.75, 'with the photo\'s shape');
+    v = await sv(e.id, { script: { scenes: [{ pid: ph.pid, caption: cap0, fit: [9, -3, 99] }] } }); eq(JSON.stringify(v.script.scenes[0].fit), '[1,0,4]', 'a placing is held to its limits'); v = await sv(e.id, { script: { scenes: [{ pid: ph.pid, caption: cap0, fit: ['x', 0, 1] }] } }); eq(v.script.scenes[0].fit, undefined, 'and one that is not numbers is dropped');
+    v = await sv(e.id, { answers: { to: 'Great-Aunt Ruth' } }); eq(v.stale, true, 'who it is for changed: stale'); eq(v.answers.to, 'Great-Aunt Ruth');
+    v = await sv(e.id, { script: { scenes: [{ pid: ph.pid, caption: cap0, fit: [0.5, 0.3, 2] }] } }); r = await POST('/api/cards/' + e.id + '/write', { ask: 'funnier' }, side); eq(r.status, 200); eq(JSON.stringify(r.json.card.script.scenes[0].fit), '[0.5,0.3,2]', 'a rewrite by the agent keeps how the photo was placed');
+    r = await POST('/api/cards/' + e.id + '/render', {}, side, { 'idempotency-key': key() }); eq(r.status, 200); await S.jobs.drain(); v = (await GET('/api/cards/' + e.id, side)).json.card; eq(v.stale, false, 'the video is made again: up to date');
+    v = await sv(e.id, { script: { lyrics: [{ section: 'verse', lines: ['New words that were never sung', 'And one more line of them'] }] } }); eq(v.stale, false, 'new words do not make the video stale: they wait for a new take of the song');
+    eq((await GET('/api/cards/' + e.id + '/status', side)).json.stale, false, 'the status says it too');
+    // a draft with no words yet is listed by who it is for
+    const dr = (await POST('/api/cards', { template: TPL.id, answers: { to: 'Opa Wim' } }, side, { 'idempotency-key': key() })).json.card; eq(dr.title, 'For Opa Wim'); v = await sv(dr.id, { answers: { to: 'Oma Riet' } }); eq(v.title, 'For Oma Riet', 'and follows the name');
+    r = await GET('/api/cards?state=draft&q=oma', side); eq(r.json.total, 1, 'drafts are found by that name'); eq(r.json.items[0].title, 'For Oma Riet'); eq((await DEL('/api/cards/' + dr.id, side)).status, 200, 'a draft can be deleted'); eq((await GET('/api/cards?state=draft&q=oma', side)).json.total, 0);
+
     // THE REAL RENDER: a job left running (as if the process died), put back, finished; its progress; the video itself
     Render.render = async function (o) { made.real++; return realRender(o); };
     c = await T.carol(who6, { photos: 2, song: false, slug: 'grandma-june-2026' }); r = await song(c.id); eq(r.status, 200); const job = r.json.job, m2 = F.music.length, at = jobLog.length;
@@ -409,14 +459,14 @@ const T0 = Date.now();
   await section('7. The card page', async function () {
     const slug = REAL.slug, U = SITE + '/' + slug, id = REAL.id, V = CFG.video;
     let r = await GET('/' + slug); eq(r.status, 200, 'the page of a ready carol'); ok(/^text\/html/.test(r.heads['content-type'])); const page = r.text, meta = function (p, attr) { const m = new RegExp('<meta ' + (attr || 'property') + '="' + p + '" content="([^"]*)"', 'g'), out = []; let x; while ((x = m.exec(page))) out.push(x[1]); return out; };
-    eq((page.match(/<title[\s>]/g) || []).length, 1, 'exactly one <title>'); ok(page.indexOf('<title>A Carol for Grandma June · ' + CFG.name + '</title>') > 0, 'the carol\'s title');
-    eq(meta('og:title').join(), 'A Carol for Grandma June'); eq(meta('og:description').join(), 'The Timmermans made Grandma June a singing card. Tap to open it.'); eq(meta('og:url').join(), U);
+    eq((page.match(/<title[\s>]/g) || []).length, 1, 'exactly one <title>'); ok(page.indexOf('<title>A Carol for Grandma Dot · ' + CFG.name + '</title>') > 0, 'the carol\'s title');
+    eq(meta('og:title').join(), 'A Carol for Grandma Dot'); eq(meta('og:description').join(), 'The Hollisters made Grandma Dot a singing card. Tap to open it.'); eq(meta('og:url').join(), U);
     const img = meta('og:image'); ok(img.length >= 1 && new RegExp('^https://sendacarol\\.test/' + slug + '/poster\\.jpg(\\?v=\\w+)?$').test(img[0]), 'og:image is the absolute https poster: ' + img[0]);
     eq(meta('og:image:width')[0], String(V.sizes.square[0])); eq(meta('og:image:height')[0], String(V.sizes.square[1])); ok(new RegExp('^' + U + '/square\\.mp4').test(meta('og:video')[0]), 'og:video'); eq(meta('og:video:type').join(), 'video/mp4'); eq(meta('og:video:width').join(), String(V.sizes.square[0])); eq(meta('og:video:height').join(), String(V.sizes.square[1]));
     eq(meta('twitter:card', 'name').join(), 'summary_large_image'); ok(new RegExp('^' + U + '/poster\\.jpg').test(meta('twitter:image', 'name')[0])); eq(meta('robots', 'name').join(), 'noindex'); eq(meta('og:site_name').join(), CFG.name);
     ok(page.indexOf('<!--og-->') < 0 && page.indexOf('"{{card}}"') < 0 && !/\{\{\w+\}\}/.test(page), 'no token left on the page'); ok(page.indexOf('window.SAC_CARD = ' + JSON.stringify(slug)) > 0, 'the page knows its card'); ok(page.indexOf('window.SAC_BUILD') > 0);
     const api = await GET('/api/card/' + slug); eq(api.status, 200); const pc = api.json;
-    eq(Object.keys(pc).sort().join(), 'engine,from,name,occasion,photos,poster,slug,song,square,story,title,to,url', '/api/card/<name>\'s shape'); eq(pc.slug, slug); eq(pc.title, 'A Carol for Grandma June'); eq(pc.to, 'Grandma June'); eq(pc.from, 'The Timmermans'); eq(pc.occasion, TPL.occasion); eq(pc.url, U); eq(pc.name, CFG.name);
+    eq(Object.keys(pc).sort().join(), 'engine,from,name,occasion,photos,poster,slug,song,square,story,title,to,url', '/api/card/<name>\'s shape'); eq(pc.slug, slug); eq(pc.title, 'A Carol for Grandma Dot'); eq(pc.to, 'Grandma Dot'); eq(pc.from, 'The Hollisters'); eq(pc.occasion, TPL.occasion); eq(pc.url, U); eq(pc.name, CFG.name);
     eq(pc.photos.length, 2); ok(pc.photos.every(function (p, i) { return p.indexOf('/' + slug + '/photo/' + i) === 0; })); ok(pc.song.indexOf('/' + slug + '/song.m4a') === 0 && pc.poster.indexOf('/' + slug + '/poster.jpg') === 0 && pc.story.indexOf('/' + slug + '/story.mp4') === 0 && pc.square.indexOf('/' + slug + '/square.mp4') === 0, 'its media addresses');
     eq(pc.engine.template, TPL.id); ok(pc.engine.timing && pc.engine.timing.beats.length > 10 && pc.engine.lyrics.length === 2 && pc.engine.scenes.length === 2, 'the engine card, with the song\'s timing');
     for (const x of [[page, 'the page'], [api.text, '/api/card']]) { ok(x[0].indexOf(MAKER_EMAIL) < 0 && x[0].toLowerCase().indexOf('maker-six') < 0, 'the maker\'s email is NOT in ' + x[1]); ok(x[0].indexOf('google:600') < 0 && x[0].indexOf(id) < 0, 'nor the account or the carol\'s id in ' + x[1]); }
@@ -563,6 +613,52 @@ const T0 = Date.now();
     if (victim.id !== mine.template) { r = await POST('/api/cards/' + mine.id + '/save', { template: victim.id }, who); eq(r.json.card.template, victim.id, 'a draft can change its template'); eq(r.json.card.occasion, victim.occasion); }
     await admin('admin_template', { id: victim.id, order: Templates.get(victim.id).order || 500, reason: 'the test puts it back' }); eq((await GET('/api/templates?per=48')).json.items.map(function (t) { return t.id; }).join(), t0.items.map(function (t) { return t.id; }).join(), 'back in its place');
     eq((await POST('/api/cards', { template: 'no-such-template' }, who)).status, 400); eq((await POST('/api/cards', {}, who)).status, 400);
+  });
+
+  await section('10. A site with pieces missing, and a machine that stops when idle', async function () {
+    const who = await maker(1000, 'pieces@example.test', 0), uid = 'google:1000', keep = {}, unset = function (k) { keep[k] = process.env[k]; delete process.env[k]; }, back = function () { Object.keys(keep).forEach(function (k) { process.env[k] = keep[k]; delete keep[k]; }); };
+    const cfg = async function () { return (await GET('/api/me', who)).json; }, written = await T.carol(who, { song: false, photos: 1, answers: { from: 'Pieces Family' } });
+    // no Stripe key: purchases open soon, no Checkout is attempted, and the admin can grant credits by hand, with a reason
+    unset('STRIPE_SECRET_KEY'); let me = await cfg(); eq(me.config.payments, false, 'no Stripe key: the page is told payments are off'); eq(me.config.closed.pay, 'Purchases open soon.');
+    const asked0 = F.stripe.asked.length; let r = await POST('/api/buy', { pack: 'one' }, who, { 'idempotency-key': key() }); eq(r.status, 503); eq(r.json.error, 'Purchases open soon.'); eq(F.stripe.asked.length, asked0, 'no Checkout was attempted');
+    eq((await GET('/api/buy/confirm?session_id=cs_test_0', who)).json.ok, false, 'and nothing is confirmed'); eq(me.user.credits, 0);
+    r = await admin('admin_grant', { uid: uid, credits: 2 }).catch(function (e) { return { error: e.message }; }); ok(r.error && /reason/i.test(r.error), 'a grant needs a reason: ' + JSON.stringify(r).slice(0, 120));
+    await admin('admin_grant', { uid: uid, credits: 2, reason: 'the owner testing end to end before payments open' }); eq(await S.balance(uid), 2, 'the admin granted credits by hand'); eq((await cfg()).user.credits, 2); back();
+    // no Google client id: only the emailed link is offered
+    unset('GOOGLE_CLIENT_ID'); me = await cfg(); eq(me.google, null, 'no Google client id: no Google button'); eq(me.emailSignIn, true, 'the emailed link is offered'); eq((await POST('/api/auth/google', { credential: 'x' })).status, 503); back();
+    unset('RESEND_API_KEY'); me = await cfg(); eq(me.emailSignIn, false, 'no email key: no emailed link'); ok(me.google, 'Google still is'); eq((await POST('/api/auth/link', { email: 'a@example.test' })).status, 503); back();
+    // no writing agent, no music service: making is closed, with a sentence
+    const client = Agent.seam.client, sf = Song.seam.fetch; Agent.seam.client = null; unset('ANTHROPIC_API_KEY'); me = await cfg(); eq(me.config.agent, false);
+    r = await POST('/api/cards/' + written.id + '/write', { ask: 'funnier' }, who); eq(r.status, 503); eq(r.json.error, 'The carol writer is not open yet. Come back soon.'); Agent.seam.client = client; back();
+    Song.seam.fetch = null; unset('ELEVENLABS_API_KEY'); me = await cfg(); eq(me.config.music, false); const b0 = await S.balance(uid);
+    r = await POST('/api/cards/' + written.id + '/song', {}, who, { 'idempotency-key': key() }); eq(r.status, 503); ok(/songs cannot be made for now/.test(r.json.error), r.json.error); eq(await S.balance(uid), b0, 'and no credit is spent'); eq(await count('SELECT COUNT(*) AS n FROM jobs WHERE card = ?', [written.id]), 0); Song.seam.fetch = sf; back();
+    // no storage on the live machine: uploads are refused with a sentence, and NOTHING is written to the machine's own disk
+    const Store = require('../store.js'), ldir = fs.mkdtempSync(path.join(os.tmpdir(), 'sac-live-')), live = Store({ env: {}, dir: ldir, prefix: 'send-a-carol/', production: true });
+    ok(/storage settings are not set \(no R2_ENDPOINT, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY\)/.test(live.broken()), 'on the live machine, no settings means storage is off: ' + live.broken());
+    let threw = null; try { await live.put('cards/x/a.jpg', Buffer.from('x')); } catch (e) { threw = e; } ok(threw && threw.status === 503, 'a put refuses'); threw = null; try { await live.get('cards/x/a.jpg'); } catch (e) { threw = e; } ok(threw && threw.status === 503, 'and a get'); eq(fs.readdirSync(ldir).length, 0, 'nothing was written to the disk'); fs.rmSync(ldir, { recursive: true, force: true });
+    eq(Store({ env: {}, dir: T.dir, prefix: 'send-a-carol/' }).broken(), '', '(a laptop keeps its folder)');
+    const cfgR2 = Store({ env: { R2_ENDPOINT: 'https://s3.example.test', R2_BUCKET: 'a-bucket', R2_REGION: 'us-east-1', R2_ACCESS_KEY_ID: 'id', R2_SECRET_ACCESS_KEY: 'secret' }, dir: T.dir, prefix: 'send-a-carol/', transport: async function (q) { cfgR2.asked = q; return { status: 200, headers: {}, body: Buffer.alloc(0) }; } });
+    eq(cfgR2.broken(), ''); eq(cfgR2.prefix(), 'send-a-carol/', 'the prefix is the app\'s folder when not given'); await cfgR2.put('cards/x/a.jpg', Buffer.from('x')); eq(cfgR2.asked.url, 'https://s3.example.test/a-bucket/send-a-carol/cards/x/a.jpg', 'endpoint, bucket and prefix are plain settings'); ok(/\/us-east-1\/s3\/aws4_request/.test(cfgR2.asked.headers.authorization), 'and so is the region');
+    S.ST.setup({ R2_ENDPOINT: 'https://s3.example.test', R2_BUCKET: 'a-bucket' });   // (this server's storage, half set: off)
+    me = await cfg(); eq(me.config.storage, false, 'the page is told storage is off'); eq(me.config.music, false); const files0 = walk(STORE).length;
+    r = await upload(written.id, pic('image/jpeg', 800, 600, 10), 'image/jpeg', who); eq(r.status, 503, 'an upload is refused'); ok(/Photos and videos cannot be kept yet/.test(r.json.error), 'with a sentence: ' + r.json.error); eq(walk(STORE).length, files0, 'and nothing is kept anywhere');
+    r = await POST('/api/cards/' + written.id + '/song', {}, who, { 'idempotency-key': key() }); eq(r.status, 503, 'and no song is made without somewhere to keep it'); eq(await S.balance(uid), b0);
+    S.ST.setup({}); eq((await cfg()).config.storage, true);
+    // nothing in the database is an address: only keys under the app's folder (moving buckets is a copy and a change of settings)
+    for (const q of ['SELECT okey AS k FROM photos', 'SELECT skey AS k FROM photos', 'SELECT akey AS k FROM takes', 'SELECT mkey AS k FROM media']) for (const x of await db.all(q)) ok(/^cards\/[A-Za-z0-9]+\/[\w.-]+$/.test(x.k), 'a key, not an address: ' + x.k);
+    // legal: making a carol is not gated on agreeing to the draft terms, and nothing is recorded as accepted
+    ok(!Object.keys(await db.get('SELECT * FROM users WHERE id = ?', [uid])).some(function (k) { return /terms|accept|agree/i.test(k); }), 'no acceptance is recorded on an account'); ok(/Draft: under legal review/.test((await GET('/legal/terms')).text), 'the terms still say they are a draft');
+    // THE MACHINE STOPS WHEN IDLE. While a job runs it asks for its own /healthz through the public address (traffic keeps it up) ...
+    const JS = S.jobs.state, realFetch = S.seam.fetch, pinged = []; S.seam.fetch = async function (u) { pinged.push(String(u)); return { ok: true, arrayBuffer: async function () { return new ArrayBuffer(0); } }; };
+    JS.keepAwake = true; JS.awakeEvery = 15; const sent0 = F.sent.length; r = await POST('/api/cards/' + written.id + '/song', {}, who, { 'idempotency-key': key() }); eq(r.status, 200); await S.jobs.drain();
+    JS.keepAwake = false; JS.awakeEvery = 20000; S.seam.fetch = realFetch; ok(pinged.length >= 1 && pinged.every(function (u) { return u === SITE + '/healthz'; }), 'while the job ran the machine asked for its own /healthz (' + pinged.length + ' times)'); const n0 = pinged.length; await new Promise(function (f) { setTimeout(f, 80); }); eq(pinged.length, n0, 'and stopped asking when it was done');
+    // ... and a carol finished with NOBODY WATCHING is announced to its maker by email, once
+    let mails = F.sent.slice(sent0); eq(mails.length, 1, 'one email'); eq(mails[0].to.join(), 'pieces@example.test', 'to the maker'); ok(/^Your carol is ready: /.test(mails[0].subject), mails[0].subject); ok(mails[0].html.indexOf(SITE + '/make?card=' + written.id) > 0 && mails[0].text.indexOf(SITE + '/make?card=' + written.id) > 0, 'with the way back to it');
+    eq(await count("SELECT COUNT(*) AS n FROM events WHERE kind = 'readymail' AND card = ?", [written.id]), 1);
+    // a maker who is watching (the progress page asks every second or two) gets no email
+    const s1 = F.sent.length; await GET('/api/cards/' + written.id + '/status', who); r = await POST('/api/cards/' + written.id + '/render', {}, who, { 'idempotency-key': key() }); eq(r.status, 200); await GET('/api/cards/' + written.id + '/status', who); await S.jobs.drain(); eq(F.sent.length, s1, 'watching: no email');
+    // an address that asked for no email gets none
+    await db.run('INSERT INTO suppress (hash, at) VALUES (?, ?) ON CONFLICT DO NOTHING', [S.mail.hash('pieces@example.test'), Date.now()]); JS.watched = {}; r = await POST('/api/cards/' + written.id + '/song', {}, who, { 'idempotency-key': key() }); eq(r.status, 200); await S.jobs.drain(); eq(F.sent.length, s1, 'an address that said "don\'t email me again" is left alone');
   });
 
   // (nothing here reached the real network)

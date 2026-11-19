@@ -7,7 +7,9 @@
 # most, and its allocator is the faster one for buffers of that size. The price is a larger image, paid once a deploy.
 FROM node:24-bookworm-slim
 # ffmpeg makes the videos (libx264 + aac), the animated preview, and reads the song; Debian's build has all three.
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
+# heif-convert (libheif-examples) turns an iPhone's HEIC photo into a JPEG: the canvas library cannot read HEIC, and
+# Debian's ffmpeg decodes only one tile of an iPhone's tiled picture.
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg libheif-examples && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev

@@ -19,7 +19,7 @@ const K = require('./kit.cjs'), FILE = path.join(__dirname, 'contract.json'), ac
 // "on" says which: draft (answers only), ready (finished), new (a draft of its own), written (one of its own, with
 // words), queued (one of its own, its song asked for). In what is sent, :draft :ready :slug :template :pid0 :pid1
 // :session stand for this run's ids.
-const ANSWERS = { to: 'Grandma June', from: 'The Timmermans', relation: 'grandparents', details: 'Biscuit the dog ate the gingerbread house.', must: 'Biscuit', own: '' };
+const ANSWERS = { to: 'Grandma Dot', from: 'The Hollisters', relation: 'grandparents', details: 'Waffles the dog ate the gingerbread house.', must: 'Waffles', own: '' };
 const SHAPES = {
   'GET /api/me': [{ as: 'nobody' }, { as: 'account' }],
   'GET /api/templates': [{ as: 'nobody' }, { as: 'account', query: { q: 'a', occasion: '', family: '', page: 1, per: 12 } }],
@@ -28,7 +28,7 @@ const SHAPES = {
   'GET /api/cards': [{ as: 'account' }, { as: 'account', query: { q: 'carol', state: 'ready', page: 1 } }],
   'GET /api/cards/:id': [{ as: 'account', on: 'draft' }, { as: 'account', on: 'ready' }],
   'POST /api/cards/:id/save': [{ as: 'account', on: 'draft', key: true, body: { v: 1, answers: ANSWERS } },
-    { as: 'account', on: 'ready', key: true, body: { v: 1, script: { title: 'A Carol for Grandma June', greeting: 'Hello, Grandma June!', signoff: 'With love, The Timmermans', lyrics: [{ section: 'verse', lines: ['The lights are up along the street tonight', 'And every window has a little glow'] }, { section: 'hook', lines: ['So here is a carol, made for you'] }], scenes: [{ pid: ':pid1', caption: 'By the tree' }, { pid: ':pid0', caption: '' }] }, notes: { ':pid0': 'Grandma June and Theo' }, template: ':template', slug: ':slug' } }],
+    { as: 'account', on: 'ready', key: true, body: { v: 1, script: { title: 'A Carol for Grandma Dot', greeting: 'Hello, Grandma Dot!', signoff: 'With love, The Hollisters', lyrics: [{ section: 'verse', lines: ['The lights are up along the street tonight', 'And every window has a little glow'] }, { section: 'hook', lines: ['So here is a carol, made for you'] }], scenes: [{ pid: ':pid1', caption: 'By the tree' }, { pid: ':pid0', caption: '' }] }, notes: { ':pid0': 'Grandma Dot and Milo' }, template: ':template', slug: ':slug' } }],
   'POST /api/cards/:id/write': [{ as: 'account', on: 'new', body: { answers: ANSWERS } }, { as: 'account', on: 'written', body: { ask: 'funnier' } }, { as: 'account', on: 'new', body: { answers: { to: 'Sam', from: 'Ada', relation: 'friend', details: 'Make it to the tune of a song everybody knows.', must: '', own: '' } } }],
   'POST /api/cards/:id/song': [{ as: 'account', on: 'written', key: true, body: {} }],
   'GET /api/cards/:id/status': [{ as: 'account', on: 'draft' }, { as: 'account', on: 'queued' }, { as: 'account', on: 'ready' }],

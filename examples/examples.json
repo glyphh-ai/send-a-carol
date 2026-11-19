@@ -2,24 +2,24 @@
  "note": "Made by tools/proof.cjs with made-up people and code-drawn placeholder photos.",
  "examples": [
   {
-   "slug": "the-timmermans-2026",
-   "title": "Grandma June's Christmas News",
+   "slug": "the-hollisters-2026",
+   "title": "News from the Hollister House",
    "occasion": "christmas",
    "template": "cozy-mantel",
-   "to": "Grandma June",
-   "from": "The Timmermans",
+   "to": "Grandma Dot",
+   "from": "The Hollisters",
    "lyrics": [
-    "Biscuit ate the gingerbread house, roof and all,",
-    "Theo lost his first tooth, left a gap so small,",
-    "Ada's bike lost its training wheels, off she flew,",
-    "Grandma June, we saved up all this news for you.",
-    "Merry Christmas, Grandma June, we love you so,",
-    "And we miss your cinnamon rolls, you know,",
-    "From the Timmermans with love and mistletoe,",
-    "Merry Christmas, Grandma June, we love you so."
+    "Waffles ate our gingerbread house, roof and all,",
+    "Wren's riding with no training wheels at all,",
+    "Milo's first tooth came out, now he's all grin,",
+    "So much news to tell you, where do we begin?",
+    "Oh Grandma Dot, the house is missing you,",
+    "And your cinnamon rolls, we miss those too,",
+    "So here's a little carol from our crew,",
+    "Merry Christmas, Grandma, we love you."
    ],
-   "poster": "/examples/the-timmermans-2026.jpg",
-   "video": "/examples/the-timmermans-2026.mp4"
+   "poster": "/examples/the-hollisters-2026.jpg",
+   "video": "/examples/the-hollisters-2026.mp4"
   },
   {
    "slug": "for-uncle-dave",

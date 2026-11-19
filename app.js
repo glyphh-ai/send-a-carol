@@ -173,7 +173,7 @@
         poll = setInterval(entered, 4000);
       } }, email, btn, err); box.appendChild(form);
     }
-    add(box, h('p', { class: 'fine' }, 'By signing in you agree to the ', h('a', { href: '/legal/terms', text: 'terms' }), ' and the ', h('a', { href: '/legal/privacy', text: 'privacy policy' }), '.'));
+    add(box, h('p', { class: 'fine' }, 'Before you start, read the ', h('a', { href: '/legal/terms', text: 'terms' }), ' and the ', h('a', { href: '/legal/privacy', text: 'privacy policy' }), ' (drafts, under legal review).'));   // (nothing is recorded as agreed to while they are drafts)
     return h('div', { class: 'center-screen' }, box);
   }
 
@@ -198,7 +198,14 @@
         const label = { draft: 'Draft', ready: 'Ready', down: 'Taken down' }[c.state] || c.state, a = h('a', { class: 'card carol', href: '/make?card=' + c.id, onclick: function (e) { if (e.metaKey || e.ctrlKey) return; e.preventDefault(); go('/make?card=' + c.id); } });
         const pic = c.poster ? h('span', { class: 'thumb' }, h('img', { src: c.poster, alt: '', loading: 'lazy' })) : thumb(Object.assign(sampleCard(c.template, c.occasion, { title: c.title }), { to: '', from: '', signoff: '' }), { host: a });
         pic.appendChild(h('span', { class: 'tag is-' + c.state, text: label }));
-        add(a, [pic, h('b', { text: c.title }), h('span', { class: 'sub', text: c.state === 'ready' ? plural(c.opens, 'open') + ' · ' + S.cfg.domain + '/' + c.slug : c.state === 'draft' ? 'Carry on where you left it' : 'Nobody can open it now' })]); grid.appendChild(a);
+        add(a, [pic, h('b', { text: c.title }), h('span', { class: 'sub', text: c.state === 'ready' ? plural(c.opens, 'open') + ' · ' + S.cfg.domain + '/' + c.slug : c.state === 'draft' ? 'Carry on where you left it' : 'Nobody can open it now' })]);
+        // a draft can be thrown away from the list (a finished carol is deleted from its own page, where what goes with it is said)
+        const del = c.state === 'draft' && !c.paid ? ibtn('trash', 'Delete the draft ' + c.title, async function () {
+          if (!await confirmBox({ title: 'Delete this draft?', text: '"' + c.title + '": its answers and photos are removed for good.', yes: 'Delete it', danger: true })) return;
+          const x = await SAC.call('/api/cards/' + c.id, null, 'DELETE').catch(function () { return null; }); if (!ok(x)) return oops(x); say('Draft deleted.'); if (r.items.length === 1 && G.page > 1) G.page--; load();
+        }, 'del') : null;
+        if (del) del.style.cssText = 'position:absolute;top:8px;right:8px;z-index:2;background:rgba(29,18,48,.82);color:#fff;border-radius:999px';
+        grid.appendChild(h('div', { style: 'position:relative;display:grid' }, a, del));
       });
       pager.hidden = r.pages < 2; pager.textContent = '';
       if (r.pages > 1) add(pager, [h('button', { class: 'btn sm soft', text: 'Back', disabled: r.page <= 1, onclick: function () { G.page--; load(); } }), h('span', { text: 'Page ' + r.page + ' of ' + r.pages }), h('button', { class: 'btn sm soft', text: 'More', disabled: r.page >= r.pages, onclick: function () { G.page++; load(); } })]);
@@ -213,7 +220,7 @@
     const cfg = S.cfg, packs = cfg.packs, one = packs.find(function (p) { return p.credits === 1 && !p.soon; }), best = packs.filter(function (p) { return !p.soon && p.credits > 1; })[0], err = h('p', { class: 'err', role: 'alert' }), rows = [], list = [];
     packs.forEach(function (p) {
       const each = p.cents / p.credits, save = one && p.credits > 1 && !p.soon ? Math.round((1 - each / one.cents) * 100) : 0, isBest = best && best.id === p.id || o.pack === p.id;
-      const btn = p.soon ? null : h('button', { class: 'btn' + (isBest ? '' : ' ghost'), text: 'Buy', 'aria-label': 'Buy ' + p.label + ' for ' + money(p.cents), disabled: !cfg.payments, autofocus: isBest, onclick: async function () {
+      const btn = p.soon || !cfg.payments ? null : h('button', { class: 'btn' + (isBest ? '' : ' ghost'), text: 'Buy', 'aria-label': 'Buy ' + p.label + ' for ' + money(p.cents), disabled: !cfg.payments, autofocus: isBest, onclick: async function () {
         err.textContent = ''; rows.forEach(function (b) { b.disabled = true; }); busy(btn, true);
         store.set('sac.buy', { credits: p.credits, card: S.card && S.card.id || '', then: o.then || '' });
         let r; try { r = await SAC.send('/api/buy', { pack: p.id, card: S.card && S.card.id || undefined }); } catch (e) { r = null; }
@@ -223,11 +230,11 @@
       if (btn) rows.push(btn);
       list.push(h('div', { class: 'card payrow' + (isBest ? ' best' : '') },
         h('h3', {}, p.label, save > 0 ? h('span', { class: 'tag is-ready', text: 'save ' + save + '%' }) : null),
-        h('div', { class: 'buy' }, p.soon ? h('span', { class: 'tag', text: 'Coming soon' }) : [h('b', { style: 'font:400 26px var(--serif)', text: money(p.cents) }), btn]),
+        h('div', { class: 'buy' }, p.soon ? h('span', { class: 'tag', text: 'Coming soon' }) : [h('b', { style: 'font:400 26px var(--serif)', text: money(p.cents) }), btn || h('span', { class: 'tag', text: 'Opens soon' })]),
         h('div', { class: 'each', text: p.soon ? '' : p.credits > 1 ? money(Math.round(each)) + ' a carol' : 'One carol, start to finish' }),
         p.soon ? null : h('p', { class: 'final' }, h('b', { text: cfg.finalSale }), ' ', h('a', { href: '/legal/refunds', target: '_blank', rel: 'noopener', text: 'Refund policy' }))));
     });
-    const d = dialog({ title: 'Carol credits', body: [o.why ? h('div', { class: 'banner', text: o.why }) : null, h('div', { class: 'balance' }, avatar('sm'), 'You have ' + plural(S.user.credits, 'carol credit') + '. One credit makes one whole carol.'), includes(), !cfg.payments ? h('div', { class: 'banner', text: 'Payments are not open yet. Come back soon.' }) : null], onClose: function () { SAC.hold('paying', false); } });
+    const d = dialog({ title: 'Carol credits', body: [o.why ? h('div', { class: 'banner', text: o.why }) : null, h('div', { class: 'balance' }, avatar('sm'), 'You have ' + plural(S.user.credits, 'carol credit') + '. One credit makes one whole carol.'), includes(), !cfg.payments ? h('div', { class: 'banner', role: 'status', text: 'Purchases open soon. Nothing can be bought yet; writing a carol with the agent is open.' }) : null], onClose: function () { SAC.hold('paying', false); } });
     add(d.body, list); d.body.appendChild(err); d.body.appendChild(h('p', { class: 'muted small center', text: 'Pay once, no subscription. Credits wait until you use them.' }));
   }
   async function paidBack(q) {
@@ -245,7 +252,7 @@
   // ---------- the mini gallery: search + style chips + pages of live thumbnails; the chosen one plays larger ----------
   function gallery(o) {   // { occasion, value, who, onPick(t) }
     const G = { q: '', family: '', page: 1, n: 0 }, pre = h('div', { class: 'gal-pre' }), grid = h('div', { class: 'gal-grid' }), fam = h('div', { class: 'chips scroll', role: 'group', 'aria-label': 'Style' }), pager = h('div', { class: 'pager', hidden: true });
-    const search = h('input', { class: 'input', type: 'search', placeholder: 'Search looks: cozy, funny, kids...', 'aria-label': 'Search looks' }); let fams = {}, qt = 0;
+    const search = h('input', { class: 'input', type: 'search', placeholder: 'Search looks', 'aria-label': 'Search looks' }); let fams = {}, qt = 0;
     (CarolTemplates.families || []).forEach(function (f) { fams[f.id] = f.name; });
     function preview(t) { pre.textContent = ''; add(pre, [thumb(sampleCard(t.id, t.occasion, o.who), { hot: true }), h('div', {}, h('span', { class: 'fam', text: fams[t.family] || '' }), h('h3', { text: t.name }), h('p', { text: t.blurb }))]); Thumbs.sweep(); }
     function pick(t) { o.value = t.id; grid.querySelectorAll('.gal-item').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.id === t.id)); }); preview(t); o.onPick(t); }
@@ -274,6 +281,33 @@
     thanks: ['What did they do for you?', 'What changed because of it?', 'How would you describe them in three words?', 'A moment you will not forget'],
     congrats: ['What did they pull off?', 'How long did it take them?', 'Who doubted it? Who never did?', 'What comes next for them?'],
   };
+  // ---------- photos a phone takes: HEIC is read here when this browser can (Safari), and by the server when it cannot ----------
+  const PHOTO_TYPES = 'image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif';
+  const isHeic = function (f) { return /hei[cf]/i.test(f.type || '') || /\.hei[cf]$/i.test(f.name || ''); };
+  const isPhoto = function (f) { return /^image\/(jpeg|png|webp)$/.test(f.type || '') || isHeic(f); };
+  async function sendable(f) {   // -> { body, type } to upload
+    if (!isHeic(f)) return { body: f, type: f.type };
+    try {
+      const bm = await createImageBitmap(f), cv = D.createElement('canvas'); cv.width = bm.width; cv.height = bm.height; cv.getContext('2d').drawImage(bm, 0, 0);
+      const blob = await new Promise(function (done) { cv.toBlob(done, 'image/jpeg', 0.92); }); if (blob && blob.size > 2000) return { body: blob, type: 'image/jpeg', local: URL.createObjectURL(blob) };
+    } catch (e) { /* this browser cannot read HEIC: the server converts it */ }
+    return { body: f, type: 'image/heic' };
+  }
+  // THE PHOTO-RIGHTS TICK: photos can be added only once the maker has ticked that they may use them (kept for this
+  // browser session; the buttons it is given stay shut until then). It is the one thing a maker confirms.
+  function rightsTick(buttons) {
+    const box = h('input', { type: 'checkbox', 'aria-label': 'I have the right to use these photos' }), set = function () { buttons.forEach(function (b) { if (b) b.disabled = !box.checked || S.cfg.storage === false; }); };
+    box.checked = !!store.get('sac.rights'); box.addEventListener('change', function () { store.set('sac.rights', box.checked ? 1 : null); set(); }); set();
+    return h('label', { class: 'check rights' }, box, h('span', {}, h('b', { text: 'These are photos I may use.' }), ' For photos of children, I am their parent or guardian, or I have permission. ', h('a', { href: '/legal/photos', target: '_blank', rel: 'noopener', text: 'About photos' }), '.'));
+  }
+  // ---------- WHO IT IS FOR: the one place a carol's to / from / what-they-are-to-you is typed. The conversation's
+  // second question and the editor's "Who it is for" panel are both this; nothing else has an input for them. ----------
+  function whoFields(d, changed) {
+    const to = h('input', { value: d.to || '', maxlength: '80', placeholder: 'Grandma Dot', autocomplete: 'off', oninput: function () { d.to = to.value; changed('to'); } }), from = h('input', { value: d.from || '', maxlength: '80', placeholder: 'The Hollisters', autocomplete: 'off', oninput: function () { d.from = from.value; changed('from'); } });
+    const rel = h('input', { class: 'input', value: RELS.indexOf(d.relation) < 0 ? d.relation || '' : '', maxlength: '60', placeholder: 'or say it your way: my college roommate', 'aria-label': 'What they are to you, in your words', oninput: function () { d.relation = rel.value; chips.querySelectorAll('.chip').forEach(function (c) { c.setAttribute('aria-pressed', 'false'); }); changed('relation'); } });
+    const chips = h('div', { class: 'chips', role: 'group', 'aria-label': 'They are' }, RELS.map(function (r) { return h('button', { class: 'chip sm', type: 'button', 'aria-pressed': String(d.relation === r), text: r, onclick: function (e) { const on = d.relation !== r; d.relation = on ? r : ''; rel.value = ''; chips.querySelectorAll('.chip').forEach(function (c) { c.setAttribute('aria-pressed', String(on && c === e.currentTarget)); }); changed('relation'); } }); }));
+    return [h('div', { class: 'two' }, h('label', { class: 'field' }, h('span', { text: 'Who is it for?' }), to), h('label', { class: 'field' }, h('span', { text: 'Who is it from?' }), from)), h('div', { class: 'field' }, h('span', { class: 'label', text: 'They are...' }), chips, rel)];
+  }
   const STARTS = [['Names', 'The names to mention: '], ['A pet', 'Their pet: '], ['This year', 'This year: '], ['An inside joke', 'Our inside joke: '], ['What I love', 'What I love about them: ']];
   function convo(card, tplId) {
     const cfg = S.cfg, L = cfg.limits, live = cfg.occasions.filter(function (o) { return o.state === 'live'; }), saved = !card && !tplId && store.get('sac.draft') || {};
@@ -281,7 +315,7 @@
     const d = { id: card ? card.id : '', occasion: card ? card.occasion : t0 ? t0.occasion : saved.occasion || '', template: card ? card.template : t0 ? t0.id : saved.template || '', to: a.to || '', from: a.from || '', relation: a.relation || '', details: a.details || '', must: a.must || '', own: a.own || '',
       photos: card ? card.photos.map(function (p) { return { id: p.id, url: p.url, note: p.note || '', state: 'done' }; }) : [], step: 0, reached: 0, writing: false, said: null };
     d.reached = card ? Math.max(store.get('sac.step.' + card.id) || 0, d.details ? 5 : d.photos.length ? 4 : d.to ? 2 : 1) : t0 ? 1 : saved.reached || 0; d.step = d.reached;
-    const thread = h('div', { class: 'convo' }), el = h('div', { class: 'screen' }, h('button', { class: 'back', onclick: function () { go('/make'); } }, icon('back'), 'My carols'), h('h1', { class: 'sr', text: 'Make a carol with the agent' }), thread);
+    const thread = h('div', { class: 'convo' }), delSlot = h('span', { style: 'margin-left:auto' }), el = h('div', { class: 'screen' }, h('div', { style: 'display:flex;align-items:center;gap:10px' }, h('button', { class: 'back', onclick: function () { go('/make'); } }, icon('back'), 'My carols'), delSlot), h('h1', { class: 'sr', text: 'Make a carol with the agent' }), thread);
     const answers = function () { return { to: d.to.trim(), from: d.from.trim(), relation: d.relation.trim(), details: d.details.trim(), must: d.must.trim(), own: d.own.trim() }; };
     const notes = function () { const n = {}; d.photos.forEach(function (p) { if (p.id && p.state === 'done') n[p.id] = p.note; }); return n; };
     const occ = function () { return cfg.occasions.find(function (o) { return o.id === d.occasion; }) || live[0] || { id: '', name: '', hello: '' }; };
@@ -294,14 +328,24 @@
       if (!making) making = (async function () { await defaultTpl(); const r = await SAC.send('/api/cards', { template: d.template, answers: answers() }); if (!ok(r) || !r.card) throw r; d.id = r.card.id; S.card = r.card; store.set('sac.draft', null); store.set('sac.step.' + d.id, d.reached); history.replaceState(null, '', '/make?card=' + d.id); })().catch(function (e) { making = null; throw e; });
       return making;
     }
-    function done() { d.step = d.step < d.reached ? d.reached : d.step + 1; d.reached = Math.max(d.reached, d.step); d.said = null; keep(true); render(true); }
+    // THE CARD IS MADE WHEN THE CONVERSATION STARTS: at its first answer, not at the first photo. From then on every
+    // answer is saved to it, and it is in "My carols" as a draft, where it can be carried on or deleted.
+    function done() {
+      d.step = d.step < d.reached ? d.reached : d.step + 1; d.reached = Math.max(d.reached, d.step); d.said = null;
+      if (d.id) keep(true); else ensureCard().then(function () { keep(true); delB.hidden = false; }, function (e) { keep(); if (e && e.error) say(e.error, true); });
+      render(true);
+    }
+    const delB = h('button', { class: 'btn quiet sm', type: 'button', hidden: !d.id, onclick: async function () {
+      if (!d.id || !await confirmBox({ title: 'Delete this draft?', text: 'Its answers and photos are removed for good.', yes: 'Delete it', danger: true })) return;
+      clearTimeout(saveT); const r = await SAC.call('/api/cards/' + d.id, null, 'DELETE').catch(function () { return null; }); if (!ok(r)) return oops(r); store.set('sac.step.' + d.id, null); say('Draft deleted.'); go('/make', true);
+    } }, icon('trash'), 'Delete this draft'); delSlot.appendChild(delB);
     const bubble = function (text, cls) { return h('div', { class: 'msg' }, avatar('sm' + (cls ? ' ' + cls : '')), h('div', { class: 'bubble say', text: text })); };
     const row = function (go2, label, skip, skipLabel) { return h('div', { class: 'row end' }, skip ? h('button', { class: 'btn quiet sm', type: 'button', text: skipLabel || 'Skip', onclick: skip }) : null, h('button', { class: 'btn', type: 'button', text: label || 'Continue', onclick: go2 })); };
 
     // --- photos ---
     function drawPhotos() {
       if (!photoBox) return; const have = d.photos.filter(function (p) { return p.state !== 'err'; }).length, up = d.photos.filter(function (p) { return p.state === 'wait' || p.state === 'up'; }).length, doneN = d.photos.filter(function (p) { return p.state === 'done'; }).length;
-      photoBox.count.textContent = up ? 'Adding ' + (doneN + 1) + ' of ' + (doneN + up) + '...' : have ? plural(have, 'photo') + ' of up to ' + L.photos : 'JPEG, PNG or WebP. Up to ' + L.photos + '.';
+      photoBox.count.textContent = up ? 'Adding ' + (doneN + 1) + ' of ' + (doneN + up) + '...' : have ? plural(have, 'photo') + ' of up to ' + L.photos : 'Straight from your phone is fine (JPEG, PNG, WebP or HEIC). Up to ' + L.photos + '.';
       photoBox.next.disabled = up > 0; photoBox.next.textContent = up ? 'Adding photos...' : have ? 'Continue with ' + plural(have, 'photo') : 'Continue without photos';
       d.photos.forEach(function (p) {
         if (!p.el) { p.el = h('div', { class: 'ph' }); p.pic = h('div', { class: 'pic' }, h('img', { src: p.local || p.url, alt: 'Photo' })); p.mid = h('div', {}); add(p.el, [p.pic, p.mid, ibtn('trash', 'Remove this photo', function () { removePhoto(p); })]); photoBox.grid.appendChild(p.el); }
@@ -314,12 +358,11 @@
     function addFiles(files) {
       let room = L.photos - d.photos.filter(function (p) { return p.state !== 'err'; }).length, over = 0;
       Array.prototype.forEach.call(files, function (f) {
-        const p = { file: f, note: '', state: 'wait' }, heic = /hei[cf]/i.test(f.type) || /\.hei[cf]$/i.test(f.name || '');
-        if (heic) { p.state = 'err'; p.error = 'This one is a HEIC photo, which cannot be read yet. In your camera settings choose "Most Compatible", or send a JPEG or PNG.'; }
-        else if (!/^image\/(jpeg|png|webp)$/.test(f.type)) { p.state = 'err'; p.error = 'That is not a photo this can read. Send a JPEG, PNG or WebP.'; }
+        const p = { file: f, note: '', state: 'wait', heic: isHeic(f) };
+        if (!isPhoto(f)) { p.state = 'err'; p.error = 'That is not a photo this can read. Send a JPEG, PNG, WebP or HEIC.'; }
         else if (f.size > L.photoBytes) { p.state = 'err'; p.error = 'That photo is larger than ' + Math.round(L.photoBytes / 1048576) + ' MB. Send a smaller copy.'; }
         else if (room <= 0) { over++; return; } else room--;
-        if (p.state !== 'err') { try { p.local = URL.createObjectURL(f); } catch (e) { p.local = ''; } } else p.url = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E';
+        if (p.state !== 'err' && !p.heic) { try { p.local = URL.createObjectURL(f); } catch (e) { p.local = ''; } } else p.url = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E';   // (a HEIC shows once it is converted)
         d.photos.push(p);
       });
       if (over) say('A carol holds up to ' + L.photos + ' photos, so ' + plural(over, 'photo') + ' did not fit.', true);
@@ -329,8 +372,8 @@
       if (pumping || !d.photos.some(function (p) { return p.state === 'wait'; })) return; pumping = true; SAC.hold('upload', true);
       try {
         await ensureCard();
-        for (;;) { const p = d.photos.find(function (x) { return x.state === 'wait'; }); if (!p) break; p.state = 'up'; drawPhotos(); let r; try { r = await SAC.call('/api/cards/' + d.id + '/photos', null, 'POST', null, { type: p.file.type, body: p.file }); } catch (e) { r = { error: 'The upload did not get through. Check your connection and add it again.' }; }
-          if (r.photo) { p.id = r.photo.id; p.url = r.photo.url; p.state = 'done'; p.file = null; } else { p.state = 'err'; p.error = r.error || 'That photo could not be added.'; } drawPhotos(); }
+        for (;;) { const p = d.photos.find(function (x) { return x.state === 'wait'; }); if (!p) break; p.state = 'up'; drawPhotos(); let r; try { const s = await sendable(p.file); r = await SAC.call('/api/cards/' + d.id + '/photos', null, 'POST', null, { type: s.type, body: s.body }); if (s.local) URL.revokeObjectURL(s.local); } catch (e) { r = { error: 'The upload did not get through. Check your connection and add it again.' }; }
+          if (r.photo) { p.id = r.photo.id; p.url = r.photo.url; p.state = 'done'; p.file = null; if (p.heic && p.pic) { const im = $('img', p.pic); if (im) im.src = p.url; } } else { p.state = 'err'; p.error = r.error || 'That photo could not be added.'; } drawPhotos(); }
       } catch (r) { d.photos.forEach(function (p) { if (p.state === 'wait') { p.state = 'err'; p.error = r && r.error || 'Your carol could not be started. Try again.'; } }); drawPhotos(); }
       pumping = false; SAC.hold('upload', false);
     }
@@ -344,22 +387,21 @@
           return [h('div', { class: 'chips', role: 'radiogroup', 'aria-label': 'Occasion' }, live.map(function (o) { return h('button', { class: 'chip', type: 'button', role: 'radio', 'aria-checked': String(o.id === cur), text: o.name, onclick: function () { pickOcc(o.id); } }); })),
             h('div', { class: 'row end' }, h('button', { class: 'btn quiet sm', type: 'button', text: 'Skip: ' + (cfg.occasions.find(function (o) { return o.id === cur; }) || live[0] || {}).name, onclick: function () { pickOcc(cur || (live[0] || {}).id); } }))]; } },
       { ask: function () { return 'Lovely. Who is this carol for, and who is it from?'; }, told: function () { return d.to || d.from ? [d.to ? 'For ' + d.to : '', d.from ? 'from ' + d.from : ''].filter(Boolean).join(', ') + (d.relation ? ' (' + d.relation.toLowerCase() + ')' : '') : 'I will keep that a surprise'; },
-        ui: function () { const to = h('input', { value: d.to, maxlength: '80', placeholder: 'Grandma June', autocomplete: 'off', oninput: function () { d.to = to.value; } }), from = h('input', { value: d.from, maxlength: '80', placeholder: 'The Parkers', autocomplete: 'off', oninput: function () { d.from = from.value; } }), rel = h('input', { class: 'input', value: RELS.indexOf(d.relation) < 0 ? d.relation : '', maxlength: '60', placeholder: 'or say it your way: my college roommate', 'aria-label': 'What they are to you, in your words', oninput: function () { d.relation = rel.value; chips.querySelectorAll('.chip').forEach(function (c) { c.setAttribute('aria-pressed', 'false'); }); } });
-          const chips = h('div', { class: 'chips', role: 'group', 'aria-label': 'They are' }, RELS.map(function (r) { return h('button', { class: 'chip sm', type: 'button', 'aria-pressed': String(d.relation === r), text: r, onclick: function (e) { const on = d.relation !== r; d.relation = on ? r : ''; rel.value = ''; chips.querySelectorAll('.chip').forEach(function (c) { c.setAttribute('aria-pressed', String(on && c === e.currentTarget)); }); } }); }));
-          return [h('div', { class: 'two' }, h('label', { class: 'field' }, h('span', { text: 'Who is it for?' }), to), h('label', { class: 'field' }, h('span', { text: 'Who is it from?' }), from)), h('div', { class: 'field' }, h('span', { class: 'label', text: 'They are...' }), chips, rel), row(done, 'Continue', function () { done(); })]; } },
+        ui: function () { return whoFields(d, function () { }).concat([row(done, 'Continue', function () { done(); })]); } },
       { ask: function () { return 'What should it feel like? Pick a look and I will match the music to it.'; }, told: function () { const t = CarolTemplates.get(d.template); return t ? t.name : 'You choose for me'; },
         ui: function () { return [gallery({ occasion: occ().id, value: d.template, who: { to: d.to.trim() || undefined, from: d.from.trim() || undefined }, onPick: function (t) { d.template = t.id; } }), row(done, 'Use this look', done, 'Skip: you choose')]; } },
       { ask: function () { return 'Got any photos? They dance right into the card. Add up to ' + L.photos + ', or none at all.'; }, told: function () { const n = d.photos.filter(function (p) { return p.state === 'done'; }).length; return n ? plural(n, 'photo') : 'No photos'; },
         ui: function () {
-          const file = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', multiple: true, class: 'sr', tabindex: '-1', 'aria-hidden': 'true', onchange: function () { addFiles(file.files); file.value = ''; } }), cam = h('input', { type: 'file', accept: 'image/*', capture: 'environment', class: 'sr', tabindex: '-1', 'aria-hidden': 'true', onchange: function () { addFiles(cam.files); cam.value = ''; } });
+          const file = h('input', { type: 'file', accept: PHOTO_TYPES, multiple: true, class: 'sr', tabindex: '-1', 'aria-hidden': 'true', onchange: function () { addFiles(file.files); file.value = ''; } }), cam = h('input', { type: 'file', accept: 'image/*', capture: 'environment', class: 'sr', tabindex: '-1', 'aria-hidden': 'true', onchange: function () { addFiles(cam.files); cam.value = ''; } });
           const count = h('span', { class: 'muted small' }), grid = h('div', { class: 'ph-grid' }), next = h('button', { class: 'btn', type: 'button', onclick: done });
-          const drop = h('div', { class: 'drop', ondragover: function (e) { e.preventDefault(); drop.classList.add('over'); }, ondragleave: function () { drop.classList.remove('over'); }, ondrop: function (e) { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); } },
-            h('div', { class: 'row', style: 'justify-content:center' }, h('button', { class: 'btn big', type: 'button', onclick: function () { file.click(); } }, icon('photo'), 'Add photos'), h('button', { class: 'btn soft', type: 'button', onclick: function () { cam.click(); } }, icon('camera'), 'Take one')), count, file, cam);
+          const addB = h('button', { class: 'btn big', type: 'button', onclick: function () { file.click(); } }, icon('photo'), 'Add photos'), camB = h('button', { class: 'btn soft', type: 'button', onclick: function () { cam.click(); } }, icon('camera'), 'Take one');
+          const drop = h('div', { class: 'drop', ondragover: function (e) { e.preventDefault(); drop.classList.add('over'); }, ondragleave: function () { drop.classList.remove('over'); }, ondrop: function (e) { e.preventDefault(); drop.classList.remove('over'); if (!store.get('sac.rights')) return say('Tick the box first: these must be photos you may use.', true); if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); } },
+            h('div', { class: 'row', style: 'justify-content:center' }, addB, camB), count, file, cam);
           d.photos.forEach(function (p) { p.el = null; p.shown = null; }); photoBox = { count: count, grid: grid, next: next }; drawPhotos();
-          return [drop, grid, h('p', { class: 'muted small' }, 'By adding photos you confirm you have the right to use them. For photos of children, you are their parent or guardian, or you have permission. ', h('a', { href: '/legal/photos', target: '_blank', rel: 'noopener', text: 'About photos' }), '.'), h('div', { class: 'row end' }, next)]; } },
+          return [cfg.storage === false ? h('div', { class: 'banner', role: 'status', text: cfg.closed && cfg.closed.storage || 'Photos cannot be added yet.' }) : null, rightsTick([addB, camB]), drop, grid, h('div', { class: 'row end' }, next)]; } },
       { ask: function () { return 'Now the good part. Tell me a few true things to sing about' + (d.to.trim() ? ' for ' + d.to.trim() : '') + '.'; }, told: function () { const t = d.details.trim(); return t ? (t.length > 90 ? t.slice(0, 88) + '...' : t) : 'Surprise me'; },
         ui: function () { const ideas = IDEAS[occ().id] || IDEAS.birthday; let i = 0; const hint = h('p', { class: 'prompt-line', 'aria-hidden': 'true' }), put = function () { hint.textContent = ''; add(hint, ['Stuck? ', h('b', { text: ideas[i % ideas.length] })]); }; put(); const iv = setInterval(function () { if (!D.body.contains(hint)) return clearInterval(iv); if (!D.hidden && !still) { i++; put(); } }, 3600);
-          const ta = h('textarea', { class: 'input', maxlength: String(L.details), rows: '5', placeholder: 'Biscuit the dog ate the whole gingerbread house. Theo lost his first tooth. She still beats everyone at cards.', 'aria-label': 'True details to sing about', oninput: function () { d.details = ta.value; keep(); } }); ta.value = d.details;
+          const ta = h('textarea', { class: 'input', maxlength: String(L.details), rows: '5', placeholder: 'Waffles the dog ate the whole gingerbread house. Milo lost his first tooth. She still beats everyone at cards.', 'aria-label': 'True details to sing about', oninput: function () { d.details = ta.value; keep(); } }); ta.value = d.details;
           return [ta, h('div', { class: 'row', style: 'justify-content:space-between' }, hint, counter(ta, L.details)), h('div', { class: 'chips' }, STARTS.map(function (s) { return h('button', { class: 'chip sm', type: 'button', text: '+ ' + s[0], onclick: function () { ta.value = (ta.value.trim() ? ta.value.replace(/\s*$/, '\n') : '') + s[1]; d.details = ta.value; ta.dispatchEvent(new Event('input')); ta.focus(); } }); })), row(done, 'Continue', function () { done(); }, 'Skip: surprise me')]; } },
       { ask: function () { return 'Last one, and you can skip it: anything I must work in?'; }, told: function () { return d.own.trim() ? 'My own lyrics' + (d.must.trim() ? ', and a line to keep' : '') : d.must.trim() ? 'Keep this line: "' + d.must.trim() + '"' : 'Nothing special'; },
         ui: function () { const must = h('input', { class: 'input', value: d.must, maxlength: '120', placeholder: 'You are my favourite hello', 'aria-label': 'A line that must be in the song', oninput: function () { d.must = must.value; } }), own = h('textarea', { class: 'input', maxlength: '900', rows: '6', placeholder: 'Type or paste your own words. I will fit them to the tune.', 'aria-label': 'Your own lyrics', oninput: function () { d.own = own.value; } }); own.value = d.own;
@@ -371,7 +413,7 @@
     async function write() {
       if (d.writing) return; d.writing = true; d.said = null; render(true); let r;
       try {
-        await ensureCard(); while (pumping) await new Promise(function (f) { setTimeout(f, 200); });
+        await ensureCard(); await defaultTpl(); while (pumping) await new Promise(function (f) { setTimeout(f, 200); });
         clearTimeout(saveT); const sv = await SAC.call('/api/cards/' + d.id + '/save', { answers: answers(), notes: notes(), template: d.template || undefined }); if (!ok(sv)) throw sv;
         r = await SAC.call('/api/cards/' + d.id + '/write', { answers: answers() });
       } catch (e) { r = e && e.error ? e : { error: 'That did not get through. Check your connection and try again.' }; }
@@ -404,19 +446,19 @@
   // ---------- d. the editor with the live preview ----------
   const imgs = {};
   function photoImg(p, onload) { let im = imgs[p.id]; if (!im) { im = imgs[p.id] = new Image(); im.onload = onload; im.src = p.url; } return im.complete && im.naturalWidth ? im : null; }
-  const local = { get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: function (k, v) { try { if (v) localStorage.setItem(k, '1'); else localStorage.removeItem(k); } catch (e) { /* no storage */ } } };
   const KIND = { title: 'The title', photo: 'Your photos', art: 'A little scene', lyric: 'Sing-along', signoff: 'The sign-off' };
   SAC.on('saved', function (id, r) { if (S.onSaved) S.onSaved(id, r); }); SAC.on('refused', function (id, r) { if (S.onRefused) S.onRefused(id, r); });
 
   function editor() {
     const cfg = S.cfg, L = cfg.limits, id = S.card.id;
-    const E = { script: JSON.parse(JSON.stringify(S.card.script)), template: S.card.template, slug: S.card.slug, slugOk: true, dirty: false, click: false, saveT: 0 };
+    const a0 = S.card.answers || {}, E = { script: JSON.parse(JSON.stringify(S.card.script)), answers: { to: a0.to || '', from: a0.from || '', relation: a0.relation || '' }, template: S.card.template, slug: S.card.slug, slugOk: true, dirty: false, click: false, saveT: 0 };
     E.script.scenes = E.script.scenes || []; E.script.lyrics = E.script.lyrics || [];
     const norm = function (l) { return String(l).replace(/\s+/g, ' ').trim(); };
     const lyr = function () { return E.script.lyrics.map(function (s) { return { section: s.section, lines: s.lines.map(norm).filter(Boolean) }; }).filter(function (s) { return s.lines.length; }); };
     const lineCount = function () { return E.script.lyrics.reduce(function (n, s) { return n + s.lines.length; }, 0); };
     const sung = function () { const c = S.card; return !!(c.take && c.engine && c.engine.timing && JSON.stringify(lyr()) === JSON.stringify((c.engine.lyrics || []).map(function (s) { return { section: s.section, lines: s.lines.map(norm) }; }))); };
-    const ecard = function () { const c = S.card, s = E.script; return { template: E.template, to: c.answers.to || '', from: c.answers.from || '', title: s.title, greeting: s.greeting, signoff: s.signoff, lyrics: lyr(), scenes: s.scenes.map(function (x, i) { return { photo: i, caption: x.caption || '' }; }), timing: sung() ? c.engine.timing : null }; };
+    const arOf = function (pid) { const p = S.card.photos.find(function (q) { return q.id === pid; }); return p && p.w > 0 && p.h > 0 ? Math.round(p.w / p.h * 1000) / 1000 : 0; };
+    const ecard = function () { const c = S.card, s = E.script; return { template: E.template, to: E.answers.to.trim(), from: E.answers.from.trim(), title: s.title, greeting: s.greeting, signoff: s.signoff, lyrics: lyr(), scenes: s.scenes.map(function (x, i) { return { photo: i, caption: x.caption || '', ar: arOf(x.pid), fit: x.fit || undefined, solo: x.solo ? 1 : undefined }; }), timing: sung() ? c.engine.timing : null }; };
 
     // --- the preview ---
     const cv = h('canvas', { 'aria-label': 'Live preview of your card', role: 'img' }), P = { t: 0, playing: false, card: null, plan: null, dur: 30, last: 0, raf: 0, audio: null, audioId: '', beat: -99, ac: null, drag: false };
@@ -467,9 +509,9 @@
 
     // --- saving: every edit shows at once and is saved 600 ms after the last key ---
     const savedEl = h('span', { class: 'saved', role: 'status', text: 'Saved' });
-    function touched() { E.dirty = true; SAC.hold('editing', true); savedEl.className = 'saved busy'; savedEl.textContent = 'Saving...'; if (S.card.takes.length) local.set('sac.stale.' + id, true); clearTimeout(E.saveT); E.saveT = setTimeout(push, 600); refresh(); action(); }
+    function touched() { E.dirty = true; SAC.hold('editing', true); savedEl.className = 'saved busy'; savedEl.textContent = 'Saving...'; clearTimeout(E.saveT); E.saveT = setTimeout(push, 600); refresh(); action(); }
     function push() {
-      clearTimeout(E.saveT); E.dirty = false; const s = E.script, data = { script: { title: s.title, greeting: s.greeting, signoff: s.signoff, scenes: s.scenes.map(function (x) { return { pid: x.pid, caption: x.caption || '' }; }) }, template: E.template }, ly = lyr();
+      clearTimeout(E.saveT); E.dirty = false; const s = E.script, data = { script: { title: s.title, greeting: s.greeting, signoff: s.signoff, scenes: s.scenes.map(function (x) { return { pid: x.pid, caption: x.caption || '', fit: x.fit || undefined, solo: x.solo ? true : undefined }; }) }, answers: { to: E.answers.to.trim(), from: E.answers.from.trim(), relation: E.answers.relation.trim() }, template: E.template }, ly = lyr();
       if (ly.reduce(function (n, x) { return n + x.lines.length; }, 0) >= 2) data.script.lyrics = ly;
       if (!S.card.shared && E.slugOk && E.slug && E.slug !== S.card.slug) data.slug = E.slug;
       SAC.save(id, data);
@@ -503,24 +545,50 @@
         const el = h('div', { class: 'shot', draggable: 'true', ondragstart: function (e) { from = i; el.classList.add('drag'); try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); } catch (er) { /* some browsers */ } }, ondragend: function () { el.classList.remove('drag'); }, ondragover: function (e) { if (from >= 0) { e.preventDefault(); el.classList.add('over'); } }, ondragleave: function () { el.classList.remove('over'); }, ondrop: function (e) { e.preventDefault(); el.classList.remove('over'); const a = from; from = -1; move(a, i); } },
           h('img', { src: p.url, alt: 'Photo ' + (i + 1), draggable: 'false' }), cap, h('div', { class: 'mv' }, h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Move photo ' + (i + 1) + ' earlier', disabled: i === 0, onclick: function () { move(i, i - 1); } }, icon('up')), h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Move photo ' + (i + 1) + ' later', disabled: i === sc.length - 1, onclick: function () { move(i, i + 1); } }, icon('down')), ibtn('trash', 'Remove photo ' + (i + 1), function () { dropPhoto(x.pid); })));
         cap.addEventListener('mousedown', function () { el.draggable = false; }); cap.addEventListener('blur', function () { el.draggable = true; });
+        // how this photo sits in its frame: "one person" lets it go in a round or shaped frame; "Move in frame" places it by hand
+        const solo = h('input', { type: 'checkbox', 'aria-label': 'Photo ' + (i + 1) + ' is of one person', onchange: function () { x.solo = solo.checked ? 1 : undefined; touched(); look('photo', i); } }); solo.checked = !!x.solo;
+        el.appendChild(h('div', { class: 'place', style: 'grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:14px' }, h('label', { style: 'display:inline-flex;gap:8px;align-items:center;min-height:36px;cursor:pointer', title: 'A photo of one person can go in a round or shaped frame. A group stays in a wide one, whole.' }, solo, 'One person'),
+          h('button', { class: 'btn quiet sm', type: 'button', 'aria-label': 'Move photo ' + (i + 1) + ' in its frame', onclick: function () { place(x, i, p); } }, icon('pencil'), x.fit ? 'Placed by you: move it' : 'Move in frame')));
         box.appendChild(el);
       });
-      const file = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', multiple: true, class: 'sr', tabindex: '-1', 'aria-hidden': 'true', onchange: function () { addPhotos(file.files); file.value = ''; } });
-      add(box, [!sc.length ? h('p', { class: 'muted small', text: 'No photos yet. The card plays little drawn scenes instead, and photos make it theirs.' }) : null, file, h('button', { class: 'btn soft sm', type: 'button', style: 'justify-self:start', disabled: sc.length >= L.photos, onclick: function () { file.click(); } }, icon('photo'), sc.length >= L.photos ? 'That is all ' + L.photos + ' photos' : 'Add photos')]);
+      const file = h('input', { type: 'file', accept: PHOTO_TYPES, multiple: true, class: 'sr', tabindex: '-1', 'aria-hidden': 'true', onchange: function () { addPhotos(file.files); file.value = ''; } });
+      const full = sc.length >= L.photos, addB = h('button', { class: 'btn soft sm', type: 'button', style: 'justify-self:start', onclick: function () { file.click(); } }, icon('photo'), full ? 'That is all ' + L.photos + ' photos' : 'Add photos');
+      add(box, [!sc.length ? h('p', { class: 'muted small', text: 'No photos yet. The card plays little drawn scenes instead, and photos make it theirs.' }) : null, file, full ? null : rightsTick([addB]), addB]); if (full) addB.disabled = true;
       return box;
     }
     async function addPhotos(files) {
       await flushNow(); SAC.hold('upload', true); let room = L.photos - E.script.scenes.length;
       for (const f of Array.prototype.slice.call(files)) {
         if (room <= 0) { say('A carol holds up to ' + L.photos + ' photos.', true); break; }
-        if (/hei[cf]/i.test(f.type) || /\.hei[cf]$/i.test(f.name || '')) { say('That one is a HEIC photo, which cannot be read yet. Choose "Most Compatible" in your camera settings, or send a JPEG or PNG.', true); continue; }
+        if (!isPhoto(f)) { say('That is not a photo this can read. Send a JPEG, PNG, WebP or HEIC.', true); continue; }
         if (f.size > L.photoBytes) { say('That photo is larger than ' + Math.round(L.photoBytes / 1048576) + ' MB.', true); continue; }
-        say('Adding ' + (f.name || 'your photo') + '...'); let r; try { r = await SAC.call('/api/cards/' + id + '/photos', null, 'POST', null, { type: f.type, body: f }); } catch (e) { r = null; }
-        if (r && r.photo) { S.card.photos.push(r.photo); E.script.scenes.push({ pid: r.photo.id, caption: '' }); room--; if (S.card.takes.length) local.set('sac.stale.' + id, true); } else oops(r);
+        say('Adding ' + (f.name || 'your photo') + '...'); let r; try { const s = await sendable(f); r = await SAC.call('/api/cards/' + id + '/photos', null, 'POST', null, { type: s.type, body: s.body }); if (s.local) URL.revokeObjectURL(s.local); } catch (e) { r = null; }
+        if (r && r.photo) { S.card.photos.push(r.photo); E.script.scenes.push({ pid: r.photo.id, caption: '' }); room--; } else oops(r);
       }
-      SAC.hold('upload', false); build(); refresh(); action();
+      SAC.hold('upload', false); await known(); build(); refresh(); action();
     }
-    async function dropPhoto(pid) { await flushNow(); const r = await SAC.call('/api/cards/' + id + '/photos/' + pid, null, 'DELETE').catch(function () { return null; }); if (!ok(r)) return oops(r); E.script.scenes = E.script.scenes.filter(function (x) { return x.pid !== pid; }); if (r.card) S.card = r.card; if (S.card.takes.length) local.set('sac.stale.' + id, true); build(); refresh(); action(); }
+    // (whether the video is older than the card is the SERVER's to say: asked again after something changed that is not a save)
+    async function known() { try { const st = await SAC.read('/api/cards/' + id + '/status'); if (st && typeof st.stale === 'boolean') S.card.stale = st.stale; } catch (e) { /* the next save says */ } }
+    async function dropPhoto(pid) { await flushNow(); const r = await SAC.call('/api/cards/' + id + '/photos/' + pid, null, 'DELETE').catch(function () { return null; }); if (!ok(r)) return oops(r); E.script.scenes = E.script.scenes.filter(function (x) { return x.pid !== pid; }); if (r.card) S.card = r.card; build(); refresh(); action(); }
+    // MOVE A PHOTO IN ITS FRAME: drag it, and zoom with the slider (or the wheel, or + and -). What is kept is a point of
+    // the photo and a zoom, with the photo (x.fit); "Automatic" forgets it. The picture drawn is the frame the card uses.
+    function place(x, i, p) {
+      const im = photoImg(p, function () { paint(); }) , pl = P.plan, sc = pl && pl.scenes.find(function (s) { return s.kind === 'photo' && s.photos.indexOf(i) >= 0; }), name = sc ? sc.frames[sc.photos.indexOf(i)] : 'plain';
+      const tp = CarolTemplates.get(E.template) || CarolTemplates.list[0], asp = CarolEngine.aspectFor(name, arOf(x.pid)), W = 300, H = Math.round(W / asp), dpr = Math.min(2, window.devicePixelRatio || 1);
+      const cvp = h('canvas', { width: String(W * dpr), height: String(H * dpr), tabindex: '0', role: 'img', 'aria-label': 'Photo ' + (i + 1) + ' in its frame. Drag to move it; arrow keys move it, plus and minus zoom.', style: 'width:' + W + 'px;max-width:100%;aspect-ratio:' + asp + ';touch-action:none;cursor:grab;display:block;margin:0 auto;border-radius:12px' });
+      const f = x.fit ? x.fit.slice() : [0.5, 0.42, 1], zoom = h('input', { type: 'range', min: '50', max: '300', step: '1', value: String(Math.round(f[2] * 100)), 'aria-label': 'Zoom', oninput: function () { f[2] = zoom.value / 100; set(); } }), hint = h('p', { class: 'muted small center', role: 'status' });
+      function paint() { const c = cvp.getContext('2d'), w = cvp.width, hh = cvp.height, img = photoImg(p, paint); c.clearRect(0, 0, w, hh); try { CarolArt.frame(name, c, img, 0, 0, w, hh, 1, tp.look.pal, { fit: x.fit || null, solo: !!x.solo, keep: !x.solo, festive: tp.occasion === 'christmas' }); } catch (e) { /* drawn again on the next change */ } hint.textContent = x.fit ? 'Placed by you.' : 'Placed automatically' + (x.solo ? ' (one person: filling the frame).' : ' (keeping everyone in view).'); }
+      function set() { f[0] = Math.max(0, Math.min(1, f[0])); f[1] = Math.max(0, Math.min(1, f[1])); f[2] = Math.max(0.5, Math.min(3, f[2])); x.fit = [Math.round(f[0] * 1000) / 1000, Math.round(f[1] * 1000) / 1000, Math.round(f[2] * 100) / 100]; zoom.value = String(Math.round(f[2] * 100)); paint(); touched(); look('photo', i); }
+      let from = null;
+      cvp.addEventListener('pointerdown', function (e) { from = { x: e.clientX, y: e.clientY }; try { cvp.setPointerCapture(e.pointerId); } catch (er) { /* a mouse without capture */ } cvp.style.cursor = 'grabbing'; e.preventDefault(); });
+      cvp.addEventListener('pointermove', function (e) { if (!from) return; const r = cvp.getBoundingClientRect(), dx = e.clientX - from.x, dy = e.clientY - from.y; if (!dx && !dy) return; from = { x: e.clientX, y: e.clientY }; f[0] -= dx / (r.width * 0.9 * f[2]); f[1] -= dy / (r.height * 0.9 * f[2]); set(); });
+      ['pointerup', 'pointercancel'].forEach(function (k) { cvp.addEventListener(k, function () { from = null; cvp.style.cursor = 'grab'; }); });
+      cvp.addEventListener('wheel', function (e) { e.preventDefault(); f[2] *= e.deltaY < 0 ? 1.06 : 1 / 1.06; set(); }, { passive: false });
+      cvp.addEventListener('keydown', function (e) { const k = { ArrowLeft: [-0.03, 0, 1], ArrowRight: [0.03, 0, 1], ArrowUp: [0, -0.03, 1], ArrowDown: [0, 0.03, 1], '+': [0, 0, 1.08], '=': [0, 0, 1.08], '-': [0, 0, 1 / 1.08] }[e.key]; if (!k) return; e.preventDefault(); f[0] += k[0]; f[1] += k[1]; f[2] *= k[2]; set(); });
+      const d = dialog({ title: 'Move it in its frame', body: [cvp, hint, h('label', { class: 'field' }, h('span', { text: 'Zoom' }), zoom),
+        h('div', { class: 'foot' }, h('button', { class: 'btn soft', type: 'button', text: 'Automatic', onclick: function () { x.fit = undefined; f[0] = 0.5; f[1] = 0.42; f[2] = 1; zoom.value = '100'; paint(); touched(); look('photo', i); } }), h('button', { class: 'btn', type: 'button', text: 'Done', autofocus: true, onclick: function () { d.close(); } }))], onClose: function () { build(); } });
+      if (!im) setTimeout(paint, 300); paint();
+    }
     function lookPanel() {
       const t = CarolTemplates.get(E.template) || { name: 'This look', blurb: '', occasion: S.card.occasion };
       return h('section', { class: 'card panel' }, h('h2', { text: 'The look' }), h('div', { class: 'look' }, thumb(P.card || ecard(), {}), h('div', {}, h('b', { style: 'font:400 21px var(--serif)', text: t.name }), h('p', { class: 'muted small', text: t.blurb }), h('button', { class: 'btn soft sm', type: 'button', style: 'margin-top:10px', text: 'Change the look', onclick: function () {
@@ -543,7 +611,7 @@
         busy(goB, true); av.classList.add('sing'); note.textContent = ''; add(note, [h('span', { class: 'dots' }, h('i'), h('i'), h('i')), ' Rewriting: ' + what.toLowerCase() + '...']); await flushNow();
         let r; try { r = await SAC.call('/api/cards/' + id + '/write', { ask: what }); } catch (e) { r = null; } E.asking = false; E.said = '';
         if (r && r.card) S.card = r.card;
-        if (r && r.ok && r.card) { E.script = JSON.parse(JSON.stringify(r.card.script)); E.script.scenes = E.script.scenes || []; if (S.card.takes.length) local.set('sac.stale.' + id, true); build(); refresh(); action(); return say('Here is the new take on the words.'); }
+        if (r && r.ok && r.card) { E.script = JSON.parse(JSON.stringify(r.card.script)); E.script.scenes = E.script.scenes || []; build(); refresh(); action(); return say('Here is the new take on the words.'); }
         if (r && r.refused) E.said = r.message; else if (r && r.status === 402 && r.need === 'pack') pay({ why: r.error }); else oops(r);
         build();
       }
@@ -556,8 +624,10 @@
         c.job && c.job.state === 'failed' ? h('div', { class: 'banner bad', role: 'alert', text: c.job.error || 'It did not work last time. Try again: nothing more is charged.' }) : null,
         agentPanel(),
         h('section', { class: 'card panel' }, h('h2', {}, 'The words', h('small', { text: lineCount() + ' of ' + L.lines + ' lines' })), text('Title', 'title', 56, 'title'), text('Greeting', 'greeting', 56, 'title'), words(), text('Sign-off', 'signoff', 70, 'signoff')),
+        h('section', { class: 'card panel who' }, h('h2', {}, 'Who it is for', h('small', { text: 'On the card, in its link and in the email' })), whoFields(E.answers, function () { touched(); look('title'); })),
         h('section', { class: 'card panel' }, h('h2', {}, 'Photos', h('small', { text: 'Drag, or use the arrows, to reorder' })), strip()),
-        lookPanel(), namePanel()]);
+        lookPanel(), namePanel(),
+        !c.takes.length && !c.paid ? h('section', { class: 'card panel' }, h('h2', { text: 'Housekeeping' }), h('div', { class: 'rowbtns' }, h('button', { class: 'btn danger sm', type: 'button', text: 'Delete this draft', onclick: async function () { if (!await confirmBox({ title: 'Delete this draft?', text: 'Its words and photos are removed for good.', yes: 'Delete it', danger: true })) return; clearTimeout(E.saveT); E.dirty = false; const r = await SAC.call('/api/cards/' + id, null, 'DELETE').catch(function () { return null; }); if (!ok(r)) return oops(r); say('Draft deleted.'); go('/make', true); } }))) : null]);
       window.scrollTo(0, y);
     }
 
@@ -568,7 +638,7 @@
       const c = S.card, takes = c.takes.length, left = c.takesLeft; let fn, label, note = ''; moreB.hidden = true;
       if (!takes) { label = 'Make the song'; fn = makeSong; note = c.paid ? 'This carol is paid for: making the song uses no new credit.' : 'Uses 1 carol credit. You have ' + S.user.credits + '.'; }
       else if (!sung()) { if (left > 0) { label = 'Make another take (' + left + ' left)'; fn = makeSong; note = 'The words changed, so it is sung again. No new credit.'; } else { label = 'Go back to the sung words'; fn = function () { E.script.lyrics = JSON.parse(JSON.stringify(S.card.engine.lyrics)); touched(); build(); }; note = 'This carol has had its ' + L.takes + ' takes, so new words cannot be sung.'; } }
-      else if (local.get('sac.stale.' + id) || c.state === 'draft' || c.media.indexOf('story') < 0) { label = 'Update the video'; fn = renderIt; note = 'Same song, fresh video. No new credit.'; }
+      else if (c.stale || E.dirty || c.state === 'draft' || c.media.indexOf('story') < 0) { label = 'Update the video'; fn = renderIt; note = c.stale || E.dirty ? 'You changed the card since its video was made. Same song, fresh video. No new credit.' : 'Same song, fresh video. No new credit.'; }   // (c.stale is the server's word: the card knows its video is older than its last edit)
       else { label = 'See the finished carol'; fn = function () { go('/make?card=' + id); }; note = 'Everything is up to date.'; if (left > 0) { moreB.hidden = false; moreB.textContent = 'Another take (' + left + ' left)'; moreB.onclick = makeSong; } }
       mainB.textContent = label; mainB.onclick = fn; noteEl.textContent = note;
     }
@@ -578,9 +648,9 @@
       busy(mainB, true); play(false); await flushNow(); let r; try { r = await SAC.send('/api/cards/' + id + '/song', {}); } catch (e) { r = null; } busy(mainB, false); action();
       if (r && r.status === 402) return pay({ why: r.error, then: 'song' });
       if (!ok(r)) return oops(r);
-      S.card = r.card; credits(r.credits); local.set('sac.stale.' + id, false); go('/make?card=' + id, true);
+      S.card = r.card; credits(r.credits); go('/make?card=' + id, true);
     }
-    async function renderIt() { busy(mainB, true); play(false); await flushNow(); let r; try { r = await SAC.send('/api/cards/' + id + '/render', {}); } catch (e) { r = null; } busy(mainB, false); action(); if (!ok(r)) return oops(r); S.card = r.card; local.set('sac.stale.' + id, false); go('/make?card=' + id, true); }
+    async function renderIt() { busy(mainB, true); play(false); await flushNow(); let r; try { r = await SAC.send('/api/cards/' + id + '/render', {}); } catch (e) { r = null; } busy(mainB, false); action(); if (!ok(r)) return oops(r); S.card = r.card; go('/make?card=' + id, true); }
     S.makeSong = makeSong;
 
     S.clean.push(function () { play(false); if (E.dirty) push(); clearTimeout(E.saveT); SAC.hold('editing', false); SAC.hold('upload', false); S.onSaved = S.onRefused = S.makeSong = null; window.removeEventListener('resize', draw); if (P.ac) { try { P.ac.close(); } catch (e) { /* closed */ } } });
@@ -636,7 +706,7 @@
 
   // ---------- g. ready: play it, share it, send it ----------
   function ready() {
-    const c = S.card, cfg = S.cfg, L = cfg.limits, id = c.id, down = c.state === 'down', v = '?v=' + encodeURIComponent(c.v || ''), base = '/' + c.slug, title = c.script && c.script.title || 'A carol for you';
+    const c = S.card, cfg = S.cfg, L = cfg.limits, id = c.id, down = c.state === 'down', v = '?v=' + encodeURIComponent(c.mv || c.v || ''), base = '/' + c.slug, title = c.script && c.script.title || 'A carol for you';
     const from = c.answers.from || '', msg = (from ? from + ' made you a carol' : 'I made you a carol') + ': ' + c.url; let shared = c.shared, file = null;
     const mark = async function () { if (shared) return; shared = true; const r = await SAC.call('/api/cards/' + id + '/share', {}).catch(function () { return null; }); if (r && r.card) S.card = r.card; };
     const again = function (r) { if (!ok(r) || !r.card) return oops(r); S.card = r.card; ready(); };
@@ -670,7 +740,10 @@
     const care = h('section', { class: 'card panel' }, h('h2', { text: 'Housekeeping' }), h('div', { class: 'rowbtns' },
       down ? null : h('button', { class: 'btn soft sm', text: 'Take it down', onclick: async function () { if (await confirmBox({ title: 'Take this card down?', text: 'The link will show nothing until you put it back. Nothing is deleted.', yes: 'Take it down' })) again(await SAC.call('/api/cards/' + id + '/down', {}).catch(function () { return null; })); } }),
       h('button', { class: 'btn danger sm', text: 'Delete this carol', onclick: async function () { if (!await confirmBox({ title: 'Delete this carol?', text: 'Its photos, its song and its video are removed for good, and its link stops working.', more: 'A credit that was used for it does not come back.', yes: 'Delete it', danger: true })) return; const r = await SAC.call('/api/cards/' + id, null, 'DELETE').catch(function () { return null; }); if (!ok(r)) return oops(r); say('Deleted.'); go('/make', true); } })));
-    show(h('div', { class: 'screen wide' }, h('button', { class: 'back', onclick: function () { go('/make'); } }, icon('back'), 'My carols'), h('div', { class: 'ready' }, top, h('div', { style: 'display:grid;gap:18px;min-width:0' }, share, takes, care))));
+    // the card says its video is older than its last edit (the server's word, c.stale): offered here too, not only in the editor
+    const upB = h('button', { class: 'btn sm', type: 'button', text: 'Update the video', onclick: async function () { busy(upB, true); let r; try { r = await SAC.send('/api/cards/' + id + '/render', {}); } catch (x) { r = null; } busy(upB, false); if (!ok(r)) return oops(r); S.card = r.card; go('/make?card=' + id, true); } });
+    const stale = c.stale && !down ? h('section', { class: 'banner', role: 'status', style: 'display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between' }, h('span', {}, h('b', { text: 'You changed this card after its video was made. ' }), 'The link still plays the old one.'), upB) : null;
+    show(h('div', { class: 'screen wide' }, h('button', { class: 'back', onclick: function () { go('/make'); } }, icon('back'), 'My carols'), h('div', { class: 'ready' }, top, h('div', { style: 'display:grid;gap:18px;min-width:0' }, stale, share, takes, care))));
   }
   function emailForm(mark) {
     const c = S.card, L = S.cfg.limits, id = c.id, list = [], left = Math.max(0, L.recipients - (c.sent || 0)), err = h('p', { class: 'err', role: 'alert' }); let sentAny = false;

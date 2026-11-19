@@ -113,10 +113,23 @@ module.exports = function (d) {   // d = { db, ready, tooMany, json, body, page,
     for (const to of list) {
       if (await stopped(to)) { out.push({ to: to, state: 'stopped' }); continue; }
       const m = carolMail(c, to, note);
-      try { await post({ from: from(), to: [to], subject: m.subject, html: m.html, text: m.text, headers: m.headers }); out.push({ to: to, state: 'sent' }); }
+      try { const r = await post({ from: from(), to: [to], subject: m.subject, html: m.html, text: m.text, headers: m.headers }); out.push({ to: to, state: 'sent', id: r && typeof r.id === 'string' ? r.id : '' }); }
       catch (e) { console.error('email:', e.message); out.push({ to: to, state: 'failed' }); }
     }
     return out;
+  }
+  // ---------- 3. "your carol is ready", to its maker, when it was finished with nobody watching ----------
+  function readyMail(c) {
+    const link = SITE + '/make?card=' + encodeURIComponent(c.id), title = c.title || 'Your carol';
+    return { subject: 'Your carol is ready: ' + title,
+      html: shell('The song is sung and the video is made. Come and hear it.', '<p style="font:15px Arial,sans-serif;color:#6b5a6e;margin:0 0 6px">It is ready</p><h1 style="font:30px/1.2 Georgia,serif;margin:0 0 14px">' + esc(title) + '</h1><p style="font:16px/1.5 Georgia,serif;margin:0">The song is sung and the video is made' + (c.to ? ' for ' + esc(c.to) : '') + '. Come and hear it, then send it.</p>' + button(link, 'Hear your carol'),
+        'You are getting this because you asked ' + esc(CFG.name) + ' to make this carol and were not on the page when it finished.'),
+      text: 'Your carol is ready: ' + title + '\n\nThe song is sung and the video is made' + (c.to ? ' for ' + c.to : '') + '. Hear it here:\n\n' + link + '\n\n' + SITE + '\n' + CFG.support + '\n' };
+  }
+  async function sendReady(c, to) {
+    to = addressOf(to); if (!to || await stopped(to)) return false;
+    const m = readyMail(c);
+    try { await post({ from: from(), to: [to], subject: m.subject, html: m.html, text: m.text }); return true; } catch (e) { console.error('email:', e.message); return false; }
   }
   // /stop : a GET shows one button (a scanner that follows links stops nothing), a POST stops every future email
   async function stop(req, res, url) {
@@ -132,5 +145,5 @@ module.exports = function (d) {   // d = { db, ready, tooMany, json, body, page,
     if (req.method !== 'GET') { res.writeHead(405, { Allow: 'GET, POST' }); res.end(); return; }
     return out(200, 'Stop these emails', '<h1>Stop these emails?</h1><p>' + esc(CFG.name) + ' only emails a card when its maker asks. Press the button and no card will be emailed to <b>' + esc(to) + '</b> again.</p><form method="post" action="/stop?e=' + esc(url.searchParams.get('e')) + '&k=' + esc(url.searchParams.get('k')) + '"><button class="btn">Don\'t email me again</button></form>');
   }
-  return { on: on, ask: ask, handle: handle, stop: stop, sendCarol: sendCarol, carolMail: carolMail, linkMail: linkMail, stopLink: stopLink, stopped: stopped, addressOf: addressOf, backOf: backOf, hash: hash, seam: seam };
+  return { on: on, ask: ask, handle: handle, stop: stop, sendCarol: sendCarol, sendReady: sendReady, readyMail: readyMail, carolMail: carolMail, linkMail: linkMail, stopLink: stopLink, stopped: stopped, addressOf: addressOf, backOf: backOf, hash: hash, seam: seam };
 };

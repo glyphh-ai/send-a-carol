@@ -153,6 +153,24 @@
     }
     return { t: out, i0: n0, per: per };
   }
+  /* WHICH FRAME A PHOTO GETS, from its shape and what its sender said about it (nothing here looks at the picture):
+     - a round or shaped frame (an ornament, a star, a heart, a medal) crops hard, so it only gets a photo the sender
+       marked "one person"; when no photo is marked, the first upright photo gets the template's shaped frame;
+     - every other photo gets one of the template's rectangular frames (a plain one if it has none), and a wide photo
+       makes that frame wide (aspectFor), so a group stays in view. */
+  var SHAPED = { ornament: 1, snowglobe: 1, wreath: 1, locket: 1, starcut: 1, bubble: 1, bowl: 1, medal: 1, balloonframe: 1 };
+  var FLEX = { plain: 1, polaroid: 1, mantel: 1, film: 1, stamp: 1, tv: 1, window: 1, scallopcard: 1 };
+  function fitOf(f) { return Array.isArray(f) && f.length === 3 && isFinite(f[0] + f[1] + f[2]) ? [clamp(+f[0], 0, 1), clamp(+f[1], 0, 1), clamp(+f[2], 0.5, 4)] : null; }
+  function frameFor(photos, fr) {
+    var rect = [], shaped = [], i, anySolo = false, first = -1, k = 0, j = 0;
+    for (i = 0; i < fr.length; i++) (SHAPED[fr[i]] ? shaped : rect).push(fr[i]);
+    if (!rect.length) rect = ['plain'];
+    for (i = 0; i < photos.length; i++) if (photos[i].solo) anySolo = true;
+    if (!anySolo) for (i = 0; i < photos.length; i++) if (!(photos[i].ar > 0.95)) { first = i; break; }   /* (a photo whose shape is not known counts as upright) */
+    for (i = 0; i < photos.length; i++) { var star = shaped.length && (anySolo ? photos[i].solo : i === first); photos[i].frame = star ? shaped[k++ % shaped.length] : rect[j++ % rect.length]; }
+  }
+  function lookOf(q) { return { ar: q.ar, solo: q.solo, fit: q.fit }; }
+  function aspectFor(name, ar) { var a = ASPECT[name] || 0.82; return FLEX[name] && ar > 0.95 ? clamp(a * ar / 0.78, a, 1.42) : a; }
   var MINLEN = 2.2;
   function buildPlan(card) {
     var tp = tplOf(card), tm = timing(card), B = beatList(tm), D = tm.duration, per = B.per, i, j;
@@ -167,7 +185,8 @@
     if (sStart == null) sStart = pick(D - 4, tEnd + 1, D - 1); if (sStart == null) sStart = Math.max(tEnd + 0.5, D - Math.min(4, D * 0.25));
     var M = sStart - tEnd, specs = tp.scenes, photos = [], seen = 0;
     var cs = card && Array.isArray(card.scenes) ? card.scenes : [];
-    for (i = 0; i < cs.length && photos.length < 12; i++) { var ph = cs[i] && cs[i].photo; if (typeof ph === 'number' && ph >= 0 && ph === Math.floor(ph)) photos.push({ photo: ph, caption: str(cs[i].caption) }); }
+    for (i = 0; i < cs.length && photos.length < 12; i++) { var ph = cs[i] && cs[i].photo; if (typeof ph === 'number' && ph >= 0 && ph === Math.floor(ph)) photos.push({ photo: ph, caption: str(cs[i].caption), ar: clamp(num(cs[i].ar, 0), 0, 4), solo: !!cs[i].solo, fit: fitOf(cs[i].fit) }); }
+    frameFor(photos, tp.frames);
     var lyricSpecs = specs.filter(function (s) { return s.kind === 'lyric'; }), nLyric = Math.min(lyricSpecs.length, M >= 13 ? 2 : M >= 5.2 ? 1 : 0), lyricLen = clamp(M * 0.19, 2.6, 5);
     var avail = M - nLyric * lyricLen, P = photos.length, S = P ? clamp(Math.floor(avail / 2.9), 1, P) : clamp(Math.round(avail / 4.4), 1, 4), groups = [], seq = [];
     if (avail < MINLEN) { S = 0; }
@@ -179,20 +198,21 @@
     }
     var fr = tp.frames, vg = tp.vignettes && tp.vignettes.length ? tp.vignettes : ['star'], wsum = 0, pi = 0;
     for (i = 0; i < S; i++) {
-      if (P) { var gr = groups[i], w = gr.length === 1 ? 1 : gr.length === 2 ? 1.25 : 1.45; seq.push({ kind: 'photo', w: w, photo: gr[0].photo, photos: gr.map(function (q) { return q.photo; }), caption: gr[0].caption, captions: gr.map(function (q) { return q.caption; }), frames: gr.map(function (q, k) { return fr[(pi + k) % fr.length]; }) }); pi += gr.length; wsum += w; }
+      if (P) { var gr = groups[i], w = gr.length === 1 ? 1 : gr.length === 2 ? 1.25 : 1.45; seq.push({ kind: 'photo', w: w, photo: gr[0].photo, photos: gr.map(function (q) { return q.photo; }), caption: gr[0].caption, captions: gr.map(function (q) { return q.caption; }), frames: gr.map(function (q) { return q.frame; }), looks: gr.map(lookOf) }); pi += gr.length; wsum += w; }
       else { seq.push({ kind: 'art', w: 1, photo: -1, photos: [], caption: '', captions: [], frames: [fr[i % fr.length]], vignette: vg[i % vg.length] }); wsum += 1; }
     }
-    if (P && S && avail / S > 6.5) { /* few photos: drawn scenes go between them so no scene sits still for long */
+    if (P && S && avail / S > 6.5) { /* few photos: the cast performs between them (the lyric band carries the words), so no scene sits still for long and no caption is repeated */
       var extra = Math.min(3, Math.round(avail / 4.6) - S), spot = 1;
-      for (i = 0; i < extra; i++) { seq.splice(Math.min(spot, seq.length), 0, { kind: 'art', w: 0.8, photo: -1, photos: [], caption: '', captions: [], frames: [fr[(pi + i) % fr.length]], vignette: vg[i % vg.length] }); wsum += 0.8; spot += 2; }
+      for (i = 0; i < extra; i++) { seq.splice(Math.min(spot, seq.length), 0, { kind: 'lyric', w: 0.8, photo: -1, photos: [], caption: '', captions: [], frames: [], frame: '', tableau: ['row', 'ride', 'hero'][i % 3], perform: true }); wsum += 0.8; spot += 2; }
       S = seq.length;
     }
-    for (i = 0; i < seq.length; i++) { seq[i].len = avail * seq[i].w / wsum; seq[i].frame = seq[i].frames[0]; }
+    for (i = 0; i < seq.length; i++) { seq[i].len = avail * seq[i].w / wsum; seq[i].frame = seq[i].frames[0] || ''; }
     for (i = 0; i < nLyric; i++) { /* the lyric scene(s) sit between the photo scenes */
       var pos = nLyric === 1 ? Math.ceil(S / 2) : (i === 0 ? Math.ceil(S / 3) : Math.max(Math.ceil(S * 2 / 3), Math.ceil(S / 3) + 1));
       seq.splice(Math.min(seq.length, pos + i), 0, { kind: 'lyric', len: lyricLen, photo: -1, photos: [], caption: '', captions: [], frames: [], frame: '', tableau: (lyricSpecs[i] && lyricSpecs[i].tableau) || 'hero' });
     }
-    if (!seq.length) seq.push({ kind: P ? 'photo' : 'art', len: M, photo: P ? photos[0].photo : -1, photos: P ? [photos[0].photo] : [], caption: P ? photos[0].caption : '', captions: P ? [photos[0].caption] : [], frames: [fr[0]], frame: fr[0], vignette: vg[0] });
+    for (i = 1; i < seq.length; i++) if (seq[i].kind === 'lyric' && seq[i - 1].kind === 'lyric' && seq[i].tableau === seq[i - 1].tableau) seq[i].tableau = seq[i].tableau === 'row' ? 'hero' : 'row';   /* two cast scenes in a row are not the same picture */
+    if (!seq.length) seq.push({ kind: P ? 'photo' : 'art', len: M, photo: P ? photos[0].photo : -1, photos: P ? [photos[0].photo] : [], caption: P ? photos[0].caption : '', captions: P ? [photos[0].caption] : [], frames: [P ? photos[0].frame : fr[0]], frame: P ? photos[0].frame : fr[0], looks: P ? [lookOf(photos[0])] : [], vignette: vg[0] });
     var cuts = [tEnd], ideal = tEnd;
     for (j = 0; j < seq.length - 1; j++) {
       ideal += seq[j].len; var prev = cuts[cuts.length - 1], left = seq.length - 1 - j;
@@ -202,10 +222,10 @@
     }
     cuts.push(sStart);
     var first = P ? photos[0] : null, scenes = [], ti = (specs[0] && specs[0].kind === 'title' && specs[0]) || {}, so = specs[specs.length - 1] || {};
-    scenes.push({ kind: 'title', t0: 0, t1: tEnd, photo: first ? first.photo : -1, photos: first ? [first.photo] : [], caption: '', captions: [''], frame: fr[0], frames: [fr[0]], layout: ti.layout || 'top' });
-    for (j = 0; j < seq.length; j++) { var q2 = seq[j]; scenes.push({ kind: q2.kind, t0: cuts[j], t1: cuts[j + 1], photo: q2.photo, photos: q2.photos, caption: q2.caption, captions: q2.captions, frame: q2.frame, frames: q2.frames, vignette: q2.vignette || '', tableau: q2.tableau || '' }); }
+    scenes.push({ kind: 'title', t0: 0, t1: tEnd, photo: first ? first.photo : -1, photos: first ? [first.photo] : [], caption: '', captions: [''], frame: first ? first.frame : fr[0], frames: [first ? first.frame : fr[0]], looks: first ? [lookOf(first)] : [], layout: ti.layout || 'top' });
+    for (j = 0; j < seq.length; j++) { var q2 = seq[j]; scenes.push({ kind: q2.kind, t0: cuts[j], t1: cuts[j + 1], photo: q2.photo, photos: q2.photos, caption: q2.caption, captions: q2.captions, frame: q2.frame, frames: q2.frames, looks: q2.looks || [], vignette: q2.vignette || '', tableau: q2.tableau || '', perform: !!q2.perform }); }
     var sp = photos.slice(0, 3);
-    scenes.push({ kind: 'signoff', t0: sStart, t1: D, photo: sp.length ? sp[0].photo : -1, photos: sp.map(function (q) { return q.photo; }), caption: '', captions: sp.map(function () { return ''; }), frame: fr[fr.length > 1 ? 1 : 0], frames: sp.map(function (q, k) { return fr[(k + 1) % fr.length]; }), layout: so.layout || 'top' });
+    scenes.push({ kind: 'signoff', t0: sStart, t1: D, photo: sp.length ? sp[0].photo : -1, photos: sp.map(function (q) { return q.photo; }), caption: '', captions: sp.map(function () { return ''; }), frame: sp.length ? sp[0].frame : fr[fr.length > 1 ? 1 : 0], frames: sp.map(function (q) { return q.frame; }), looks: sp.map(lookOf), layout: so.layout || 'top' });
     for (j = 0; j < scenes.length; j++) { scenes[j].n = j; seen = 0; for (i = 0; i < j; i++) if (scenes[i].kind === scenes[j].kind) seen++; scenes[j].index = seen; }
     var fl = flatLines(card), lines = []; for (i = 0; i < fl.length; i++) lines.push({ text: fl[i].text, t0: tm.lines[i].t0, t1: tm.lines[i].t1, section: fl[i].section });
     var beats = []; for (i = 0; i < B.t.length; i++) if (B.t[i] >= 0 && B.t[i] <= D) beats.push(Math.round(B.t[i] * 1e4) / 1e4);
@@ -339,13 +359,14 @@
   function drawFrames(F, Lc, R, sc, o) {
     var ctx = F.ctx, L = F.L, n = Math.max(1, sc.kind === 'art' ? 1 : sc.photos.length), sl = SLOTS[o && o.album && n > 1 && n < 4 ? (L.tall ? 'album' : 'albumSq') : L.tall && R.w / R.h < 0.95 ? 'tall' : 'square'][Math.min(4, n) - 1], out = [], i, look = F.tp.look;
     for (i = 0; i < n && i < 4; i++) {
-      var s = sl[i], cx = R.x + s[0] * R.w, cy = R.y + s[1] * R.h, sw = s[2] * R.w, sh = s[3] * R.h * (o && o.capRoom && n === 1 ? 0.93 : 1), name = sc.frames[i] || F.tp.frames[0], asp = ASPECT[name] || 0.82;
+      var s = sl[i], cx = R.x + s[0] * R.w, cy = R.y + s[1] * R.h, sw = s[2] * R.w, sh = s[3] * R.h * (o && o.capRoom && n === 1 ? 0.93 : 1), name = sc.frames[i] || F.tp.frames[0], lk = (sc.looks && sc.looks[i]) || {}, asp = sc.kind === 'art' ? ASPECT[name] || 0.82 : aspectFor(name, lk.ar);
+      if (asp > 1.05) sw = n === 1 ? Math.max(sw, R.w * 0.96) : sw * 1.28;   /* a wide frame takes the width (alone), or overlaps its neighbours a little (in a collage): never a small picture in a big gap */
       var bw = Math.min(sw, sh * asp), bh = bw / asp, a = clamp((Lc.lt - 0.04 - i * 0.13) / 0.6, 0, 1), art = sc.kind === 'art', idx = art ? -1 : sc.photos[i];
       if (o && o.capRoom && n === 1) cy -= R.h * 0.03;
       var img = idx >= 0 && F.env.images ? F.env.images[idx] || null : null, tilt = n > 1 ? (i % 2 ? 1 : -1) * 0.04 : num(look.tilt, 0) * (sc.n % 2 ? -1 : 1);
       var float = Math.sin(F.t * 0.9 + i * 1.7 + sc.n) * L.u * 0.5, kb = Lc.u;
       ctx.save(); enter(ctx, look.frameIn, a, cx, cy, bw, bh, i + sc.n, F);
-      var q = Art.frame(name, ctx, img, cx - bw / 2, cy - bh / 2 + float, bw, bh, F.t, F.pal, { beat: F.bt.phase, n: F.bt.n + i, seed: sc.n * 7 + i, tilt: tilt, zoom: 1 + 0.07 * kb, panX: (i % 2 ? -1 : 1) * 0.014 * (kb - 0.5), panY: -0.012 * kb, art: art ? vignetteArt(F, sc.vignette || 'star') : null, festive: F.tp.occasion === 'christmas' });
+      var q = Art.frame(name, ctx, img, cx - bw / 2, cy - bh / 2 + float, bw, bh, F.t, F.pal, { beat: F.bt.phase, n: F.bt.n + i, seed: sc.n * 7 + i, tilt: tilt, zoom: 1 + 0.07 * kb, panX: (i % 2 ? -1 : 1) * 0.014 * (kb - 0.5), panY: -0.012 * kb, art: art ? vignetteArt(F, sc.vignette || 'star') : null, festive: F.tp.occasion === 'christmas', fit: lk.fit || null, solo: !!lk.solo, keep: !lk.solo });
       ctx.restore();
       var face = null;
       if (!art) { face = { x: q.x + q.w * 0.22, y: q.y + q.h * 0.16 - L.u * 0.6, w: q.w * 0.56, h: q.h * 0.56 + L.u * 1.2 }; Lc.faces.push(face); pushBox(F, Lc, 'photo', q.x, q.y, q.w, q.h, idx); pushBox(F, Lc, 'face', q.x + q.w * 0.22, q.y + q.h * 0.16, q.w * 0.56, q.h * 0.56, idx); }
@@ -398,6 +419,9 @@
     if (a > 0.01) {
       ctx.save(); ctx.globalAlpha = clamp(a * 2.2, 0, 1); ctx.translate(cx, top + h / 2); var sc = (0.72 + 0.28 * e) * (1 + 0.016 * k); ctx.scale(sc, sc); ctx.translate(-cx, -(top + h / 2));
       var px0 = cx - bw / 2 - padX, pw = bw + padX * 2, py0 = top - padY, phh = h + padY * 2;
+      if (!plate && !F.hitOnly) { /* a title with no plate of its own gets a soft shade behind it, so it reads over any backdrop (a window, curtains, a busy wall) */
+        var shc = F.tp.look.title === 'sticker' ? p.paper : dark(F.tp.look.dimColor || p.bg, 0.55), sg; for (sg = 0; sg < 4; sg++) fillRR(ctx, cx - bw / 2 - u * (3 + sg * 2.2), top - u * (1.5 + sg * 1.6), bw + u * (6 + sg * 4.4), h + u * (3 + sg * 3.2), u * (5 + sg * 2.5), alpha(shc, 0.15));
+      }
       if (plate === 'plate') { fillRR(ctx, px0 + u * 0.8, py0 + u * 1.1, pw, phh, u * 2.4, 'rgba(0,0,0,0.22)'); fillRR(ctx, px0, py0, pw, phh, u * 2.4, p.paper); strokeRR(ctx, px0 + u * 1.2, py0 + u * 1.2, pw - u * 2.4, phh - u * 2.4, u * 1.6, p.accent, Math.max(1, u * 0.45)); strokeRR(ctx, px0 + u * 2.1, py0 + u * 2.1, pw - u * 4.2, phh - u * 4.2, u * 1.1, alpha(p.gold, 0.9), Math.max(1, u * 0.22)); }
       else if (plate === 'ribbon') { var tl = u * 5, dk = dark(p.accent, 0.3), m, sgn;
         for (m = 0; m < 2; m++) { sgn = m ? 1 : -1; var ex = m ? px0 + pw : px0; ctx.beginPath(); ctx.moveTo(ex - sgn * u * 2, py0 + u * 2.4); ctx.lineTo(ex + sgn * tl, py0 + u * 2.4); ctx.lineTo(ex + sgn * (tl - u * 2.6), py0 + u * 2.4 + phh / 2); ctx.lineTo(ex + sgn * tl, py0 + u * 2.4 + phh); ctx.lineTo(ex - sgn * u * 2, py0 + u * 2.4 + phh); ctx.closePath(); ctx.fillStyle = dk; ctx.fill(); }
@@ -451,7 +475,7 @@
   }
   function sceneLyric(F, Lc) {
     var S = F.L.stage, fx = F.tp.lyricFx === undefined ? 'notes' : F.tp.lyricFx;
-    drawSky(F, Lc, S); if (!F.hitOnly) staff(F, Lc, S); tableau(F, Lc, S, 'sing', Lc.sc.tableau || 'hero');
+    drawSky(F, Lc, S); if (!F.hitOnly) staff(F, Lc, S); tableau(F, Lc, S, Lc.sc.perform ? (Lc.sc.index % 2 ? 'wave' : 'dance') : 'sing', Lc.sc.tableau || 'hero');
     if (fx && !F.hitOnly) Art.particles(fx, F.ctx, F.W, F.L.band.y, F.t, F.pal, { amount: 0.55 * clamp(Lc.lt / 0.6, 0, 1), seed: 'ly' + Lc.sc.n, beat: F.bt.phase });
   }
   function sceneSignoff(F, Lc) {
@@ -646,6 +670,7 @@
 
   E.draw = draw; E.timing = timing; E.plan = plan; E.beatAt = beatAt; E.posterTime = posterTime; E.hit = hit;
   E.layout = function (W, H, card) { return layout(W, H, tplOf(card)); };
+  E.aspectFor = aspectFor; E.shapedFrames = Object.keys(SHAPED);
   E.karaokeStyles = KARAOKE; E.transitions = TRANSITIONS; E.titleStyles = TITLES; E.frameEntrances = ['pop', 'drop', 'slide', 'rise', 'swing', 'spin'];
   return E;
 });

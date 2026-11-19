@@ -611,8 +611,20 @@
     var s = h / 100, sow = ow;
     ctx.save();
     ctx.translate(x, y); ctx.scale(pose.flip ? -s : s, s);
-    ctx.scale(1 + 0.055 * k, 1 - 0.075 * k + Math.sin(t * 2.3 + m.ph * 6) * 0.008 - 0.008);
-    ctx.rotate(m.sw * 0.03);
+    /* THE MOVE, on the beat: a crouch just before it (anticipation), the hit (squash, then a stretch and a hop that lands
+       before the next crouch), a lean that changes side every beat, and an accent on every 4th beat that is this mood's
+       own (dance: a bigger jump with a twist; sing: up on the toes, leaning back into the note; wave: a deep bow of the
+       whole body). Each character is a little out of step with the others (ph), so a cast never moves as one block. */
+    var acc = ((n % 4) + 4) % 4 === 3 ? 1 : 0, a = e * amp, late = clamp(beat - m.ph * 0.05, 0, 1);
+    var ant = late > 0.8 ? Math.sin((late - 0.8) / 0.2 * Math.PI / 2) : 0;                        /* 0..1 as the next beat comes */
+    var air = late < 0.5 ? Math.sin(late / 0.5 * Math.PI) : 0;                                   /* 0..1..0: off the ground */
+    var hopH = (mood === 'dance' ? 3 + 2 * acc : mood === 'sing' ? 1.1 + 2.4 * acc : mood === 'wave' ? 1.4 : 0.4) * a;
+    var lean = mood === 'dance' ? m.sw * (0.05 + 0.05 * acc) + side * acc * 0.1 * Math.exp(-4 * beat) * a
+      : mood === 'sing' ? Math.sin((n + beat) * Math.PI / 2 + m.ph * 3) * 0.045 * a - acc * 0.05 * air * a
+      : mood === 'wave' ? m.sw * 0.035 + acc * 0.09 * Math.sin(beat * Math.PI) * a : m.sw * 0.02;
+    ctx.translate(mood === 'dance' ? side * (1 - Math.exp(-5 * beat)) * 1.6 * a : 0, -hopH * air);
+    ctx.rotate(lean);
+    ctx.scale(1 + 0.055 * k + 0.035 * ant * a - 0.03 * air * a, 1 - 0.075 * k - 0.05 * ant * a + 0.045 * air * a + Math.sin(t * 2.3 + m.ph * 6) * 0.008 - 0.008);
     ow = 1.1; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     try { f(ctx, m, p); } finally { ow = sow; ctx.restore(); }
   }
@@ -1155,12 +1167,26 @@
     heartPath(c, cx - m * 0.01, cy - m * 0.3, m * 0.09); c.fillStyle = alpha(p.accent, 0.55); c.fill();
   }
   var KB = null; /* set by frame(): { z: zoom >= 1, x, y: pan as a fraction of the picture, art: function (c, x, y, w, h) drawn instead of a photo } */
-  function drawPhoto(c, img, x, y, w, h, p) { /* cover fit, focus a little above the centre where faces are */
+  /* A PHOTO IN ITS WINDOW. Plain arithmetic on the photo's and the window's sizes; nothing looks at the picture.
+     - the sender placed it (KB.fit = [x, y, zoom]): that point of the photo sits in the middle, at that zoom of "cover";
+     - it is marked as one person (KB.solo): cover, centred a little above the middle, where a face is;
+     - otherwise (KB.keep): cover, but never losing more than 14% of the photo's width or 20% of its height: a group
+       stays whole. Where the photo then does not fill the window, a darkened close-up of itself fills the rest. */
+  function drawPhoto(c, img, x, y, w, h, p) {
     if (KB && KB.art) { KB.art(c, x, y, w, h); return; }
     var iw = img && img.width, ih = img && img.height;
     if (iw > 0 && ih > 0) {
-      var sc = Math.max(w / iw, h / ih) * (KB ? KB.z : 1), sw = w / sc, sh = h / sc, sx = clamp(iw * (0.5 + (KB ? KB.x : 0)) - sw / 2, 0, iw - sw), sy = clamp(ih * (0.42 + (KB ? KB.y : 0)) - sh / 2, 0, ih - sh);
-      try { c.drawImage(img, sx, sy, sw, sh, x, y, w, h); return; } catch (e) { /* fall through to the placeholder */ }
+      var cover = Math.max(w / iw, h / ih), z = 1, fx = 0.5, fy = 0.42;
+      if (KB && KB.fit) { fx = KB.fit[0]; fy = KB.fit[1]; z = KB.fit[2]; }
+      else if (KB && KB.keep) z = clamp(Math.min((w / iw) / (cover * 0.86), (h / ih) / (cover * 0.8)), 0.25, 1);
+      var sc = cover * z * (KB ? KB.z : 1), sw = Math.min(iw, w / sc), sh = Math.min(ih, h / sc), tw = sw * sc, th = sh * sc, tx = x + (w - tw) / 2, ty = y + (h - th) / 2, bands = tw < w - 0.5 || th < h - 0.5;
+      var sx = clamp(iw * (fx + (KB ? KB.x : 0)) - sw / 2, 0, iw - sw), sy = clamp(ih * (fy + (KB ? KB.y : 0)) - sh / 2, 0, ih - sh);
+      try {
+        if (bands) { var bs = cover * 1.7, bw = w / bs, bh = h / bs; c.drawImage(img, (iw - bw) / 2, clamp(ih * 0.42 - bh / 2, 0, ih - bh), bw, bh, x, y, w, h); c.fillStyle = 'rgba(24,14,30,0.5)'; c.fillRect(x, y, w, h); }
+        c.drawImage(img, sx, sy, sw, sh, tx, ty, tw, th);
+        if (bands) { c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = Math.max(1, Math.min(w, h) * 0.008); c.strokeRect(tx, ty, tw, th); }
+        return;
+      } catch (e) { /* fall through to the placeholder */ }
     }
     placeholder(c, x, y, w, h, p);
   }
@@ -1227,7 +1253,7 @@
   };
 
   FR.mantel = function (c, img, w, h, t, p, o, u) {
-    var sh = u * 9, fh = h - sh - u * 5, fw = Math.min(w * 0.86, fh * 0.86), th = u * 7, cx = w / 2, i, j; fh = Math.min(fh, fw * 1.4); var fy = h - sh - fh, fx = cx - fw / 2;
+    var sh = u * 9, fh = h - sh - u * 5, fw = Math.min(w * 0.86, fh * (w > h * 1.05 ? 1.6 : 0.86)), th = u * 7, cx = w / 2, i, j; fh = Math.min(fh, fw * 1.4);   /* (a wide box, for a wide photo, gets a wide picture frame) */ var fy = h - sh - fh, fx = cx - fw / 2;
     R(c, 0, h - sh, w, sh, u * 1.5, WOOD2); Rn(c, 0, h - sh, w, u * 2.6, u * 1.2, shade(WOOD2, 0.25)); Rn(c, u * 3, h - u * 3.4, w - u * 6, u * 1.2, u * 0.6, shade(WOOD2, -0.25));
     Rn(c, fx + u * 2, h - sh - u * 1.2, fw, u * 2.4, u, 'rgba(0,0,0,0.2)');
     Pg(c, [[cx - u * 10, fy + u], [cx, fy - u * 4.5], [cx + u * 10, fy + u]], p.gold); /* crest */
@@ -1463,7 +1489,8 @@
     var f = FR[name] || FR.plain; if (!ctx || !(w > 2) || !(h > 2) || !f) return { x: x, y: y, w: Math.max(1, w), h: Math.max(1, h) };
     opts = opts || {};
     var o = { beat: frac(num(opts.beat, 0.5)), n: Math.floor(num(opts.n, 0)), seed: opts.seed == null ? 1 : opts.seed, festive: opts.festive !== false }, tilt = clamp(num(opts.tilt, 0), -0.35, 0.35);
-    KB = { z: clamp(num(opts.zoom, 1), 1, 1.3), x: clamp(num(opts.panX, 0), -0.06, 0.06), y: clamp(num(opts.panY, 0), -0.06, 0.06), art: typeof opts.art === 'function' ? opts.art : null };
+    KB = { z: clamp(num(opts.zoom, 1), 1, 1.3), x: clamp(num(opts.panX, 0), -0.06, 0.06), y: clamp(num(opts.panY, 0), -0.06, 0.06), art: typeof opts.art === 'function' ? opts.art : null,
+      fit: Array.isArray(opts.fit) && opts.fit.length === 3 ? [clamp(num(opts.fit[0], 0.5), 0, 1), clamp(num(opts.fit[1], 0.42), 0, 1), clamp(num(opts.fit[2], 1), 0.5, 4)] : null, solo: !!opts.solo, keep: !!opts.keep };
     var sc = 1 / (1 + 1.25 * (Math.abs(tilt) + 0.028)), u = Math.min(w, h) / 100, sow = ow, q, cx = x + w / 2, cy = y + h / 2;
     ctx.save(); ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.rotate(tilt); ctx.translate(-w / 2, -h / 2); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ow = u * 0.9;
     try { q = f(ctx, img, w, h, num(t, 0), P(pal), o, u); } finally { ow = sow; KB = null; ctx.restore(); }

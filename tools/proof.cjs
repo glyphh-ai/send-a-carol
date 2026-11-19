@@ -29,8 +29,10 @@ function call(method, url, body, headers) {
 }
 const pick = function (occasion, family) { const t = Templates.list.find(function (x) { return x.occasion === occasion && new RegExp(family, 'i').test(x.family + ' ' + ((Templates.families.find(function (f) { return f.id === x.family; }) || {}).name || '')); }); if (!t) throw new Error('no template for ' + occasion + ' / ' + family); return t.id; };
 const CAROLS = [
-  { slug: 'the-timmermans-2026', template: process.env.PROOF_T1 || pick('christmas', 'cozy|family'), photos: 3, seed: 1,
-    answers: { to: 'Grandma June', from: 'The Timmermans', relation: 'grandparents', details: 'Biscuit the dog ate the whole gingerbread house. Theo lost his first tooth. Ada learned to ride her bike without training wheels. We miss your cinnamon rolls.' } },
+  // a made-up family (nobody's real name). Its photos are of three shapes on purpose: a wide group, an upright photo
+  // marked "one person" (it goes in the round frame), a wide pair: [seed, width, height, 'solo'?, who is in it]
+  { slug: 'the-hollisters-2026', template: process.env.PROOF_T1 || pick('christmas', 'cozy|family'), photos: [[2, 1600, 1200, '', 'All of us on the porch'], [3, 1200, 1600, 'solo', 'Milo and the gap where his tooth was'], [4, 1600, 1200, '', 'Wren and Milo']],
+    answers: { to: 'Grandma Dot', from: 'The Hollisters', relation: 'grandparents', details: 'Waffles the dog ate the whole gingerbread house. Milo lost his first tooth. Wren learned to ride her bike without training wheels. We miss your cinnamon rolls.' } },
   { slug: 'for-uncle-dave', template: process.env.PROOF_T2 || pick('christmas', 'funny'), photos: 2, seed: 4,
     answers: { to: 'Uncle Dave', from: 'Maya and Jo', relation: 'family', details: 'He has worn the same reindeer sweater since 1998. He burns the turkey every year and says it is "caramelised". He is undefeated at charades.', must: 'undefeated at charades' } },
   { slug: 'nora-is-thirty', template: process.env.PROOF_T3 || pick('birthday', '.'), photos: 4, seed: 7,
@@ -48,16 +50,24 @@ async function tally() {
   if (process.argv.indexOf('--report') >= 0) { await tally(); process.exit(0); }
   await S.db.run('INSERT INTO users (id, email, name, created) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING', [UID, 'proof@example.test', 'Proof run', Date.now()]);
   await S.grant(UID, 3, 'the proof run', 'proof:credits');
+  // an example that is no longer in the list above is deleted from this run's store (its media with it), and the
+  // credit of the pass that replaces it is granted once
+  const keepSlugs = CAROLS.map(function (c) { return c.slug; }), gone = (await S.db.all("SELECT id, slug FROM cards WHERE uid = ? AND state <> 'deleted'", [UID])).filter(function (x) { return keepSlugs.indexOf(x.slug) < 0; });
+  for (const x of gone) { const r = await call('DELETE', '/api/cards/' + x.id); console.log('[retired] an example that is no longer listed: ' + (r.status === 200 ? 'deleted' : 'NOT deleted (' + r.status + ')')); }
+  if (gone.length) await S.grant(UID, gone.length, 'the proof run, pass 2', 'proof:credits:2');
+  await S.db.run('UPDATE users SET paid = 1 WHERE id = ?', [UID]);   // (this account's credits were granted, not bought: without this the free-draft limit stops a fourth carol)
   const made = [];
   for (const c of CAROLS) {
     let row = await S.db.get('SELECT id, state FROM cards WHERE slug = ?', [c.slug]), id = row && row.id, r;
     if (!id) {
       r = await call('POST', '/api/cards', { template: c.template, answers: c.answers }); if (r.status !== 200) throw new Error('card: ' + r.body); id = r.json.card.id;
-      for (let i = 0; i < c.photos; i++) { r = await call('POST', '/api/cards/' + id + '/photos', K.photo(c.seed + i, 1200, 1600), { 'content-type': 'image/png' }); if (r.status !== 200) throw new Error('photo: ' + r.body); }
+      const list = typeof c.photos === 'number' ? Array.from({ length: c.photos }, function (x, i) { return [c.seed + i, 1200, 1600, '', '']; }) : c.photos, notes = {}, solo = {};
+      for (const p of list) { r = await call('POST', '/api/cards/' + id + '/photos', K.photo(p[0], p[1], p[2]), { 'content-type': 'image/png' }); if (r.status !== 200) throw new Error('photo: ' + r.body); if (p[4]) notes[r.json.photo.id] = p[4]; if (p[3] === 'solo') solo[r.json.photo.id] = true; }
+      if (Object.keys(notes).length) { r = await call('POST', '/api/cards/' + id + '/save', { notes: notes }); if (r.status !== 200) throw new Error('notes: ' + r.body); }
       if ((await counts()).agent >= MAX_AGENT) throw new Error('the agent-call cap is reached');
       console.log('[' + c.slug + '] the agent is writing (template ' + c.template + ')');
       r = await call('POST', '/api/cards/' + id + '/write', {}); if (r.status !== 200 || !r.json.ok) throw new Error('write: ' + r.body);
-      r = await call('POST', '/api/cards/' + id + '/save', { slug: c.slug }); if (r.status !== 200) throw new Error('name: ' + r.body);
+      r = await call('POST', '/api/cards/' + id + '/save', { slug: c.slug, script: { scenes: r.json.card.script.scenes.map(function (x) { return Object.assign({}, x, solo[x.pid] ? { solo: true } : null); }) } }); if (r.status !== 200) throw new Error('name: ' + r.body);
     }
     let card = (await call('GET', '/api/cards/' + id)).json.card;
     if (c.ask && !card.rewrites && !card.takes.length) { console.log('[' + c.slug + '] another take: ' + c.ask); r = await call('POST', '/api/cards/' + id + '/write', { ask: c.ask }); if (r.status !== 200) throw new Error('rewrite: ' + r.body); card = r.json.card; }

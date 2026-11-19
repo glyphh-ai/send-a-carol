@@ -120,7 +120,7 @@
   var U = { p: 0, a1: 0, a2: 0, a3: 0, kick: 0, taps: 0, done: false, drag: null, cx: 0, cy: 0, s: 100, assets: false, t0: 0 };
   function presentBox() {
     var land = VW > VH && VH < 520;
-    U.s = land ? VH * 0.62 : Math.min(VW * 0.66, VH * 0.36, 360); U.cx = land ? VW * 0.68 : VW / 2; U.cy = land ? VH * 0.52 : VH * 0.55;
+    U.s = land ? VH * 0.62 : Math.min(VW * 0.78, VH * 0.42, 440); U.cx = land ? VW * 0.68 : VW / 2; U.cy = land ? VH * 0.52 : VH * 0.56;
   }
   function ribbonCols() { var p = S.pal, rib = Math.abs(lum(p.gold) - lum(p.accent)) < 0.12 ? p.paper : p.gold; return { paper: p.accent, rib: rib, ribD: mix(rib, '#000000', 0.22), ribH: mix(rib, '#ffffff', 0.4) }; }
   function drawPresent() {
@@ -129,7 +129,11 @@
     var br = reduce ? 1 : 1 + Math.sin(tm * 2.1) * 0.014;
     // the glow it sits in
     var gl = ctx.createRadialGradient(U.cx, U.cy, U.s * 0.1, U.cx, U.cy, U.s * 1.25); gl.addColorStop(0, al(p.gold, 0.34 + 0.25 * a3)); gl.addColorStop(1, al(p.gold, 0)); ctx.fillStyle = gl; ctx.fillRect(0, 0, VW, VH);
-    ctx.save(); ctx.translate(U.cx, U.cy + 46 * u); ctx.rotate(wig); ctx.scale(br * (1 + U.kick * 0.07), br * (1 - U.kick * 0.09)); ctx.translate(0, -46 * u); ctx.scale(u, u); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    // light fanning out from behind it, turning slowly; brighter with every tap, so it feels about to burst
+    if (!reduce) { var rk = 0.07 + 0.16 * U.p + 0.1 * U.kick, rl = Math.max(VW, VH) * 0.9; ctx.save(); ctx.translate(U.cx, U.cy - U.s * 0.05); ctx.rotate(tm * 0.12); for (i = 0; i < 14; i++) { ctx.rotate(TAU / 14); var rg0 = ctx.createLinearGradient(0, 0, 0, -rl); rg0.addColorStop(0, al(p.gold, rk * (i % 2 ? 1 : 0.6))); rg0.addColorStop(1, al(p.gold, 0)); ctx.fillStyle = rg0; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-rl * 0.085, -rl); ctx.lineTo(rl * 0.085, -rl); ctx.closePath(); ctx.fill(); } ctx.restore(); }
+    // every few seconds it gives a little hop, as if something inside wants out
+    var hopT = (tm % 3.4) / 0.5, hop = reduce || hopT > 1 || U.p > 0 ? 0 : Math.sin(hopT * PI) * 7 * u;
+    ctx.save(); ctx.translate(U.cx, U.cy + 46 * u - hop); ctx.rotate(wig); ctx.scale(br * (1 + U.kick * 0.07), br * (1 - U.kick * 0.09)); ctx.translate(0, -46 * u); ctx.scale(u, u); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, 48, 52, 7, 0, 0, TAU); ctx.fill();
     // dressing behind: balloons for a birthday
     if (S.data.occasion === 'birthday') {

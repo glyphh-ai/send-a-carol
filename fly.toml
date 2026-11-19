@@ -25,12 +25,16 @@ kill_timeout = "30s"
 [http_service]
   internal_port = 8080
   force_https = true
-  # ALWAYS ON, one machine. Songs and videos are made in the background, after the maker's request has been
-  # answered and often after they have closed the tab: a machine that stops when no request is coming through the
-  # proxy would stop in the middle of a video somebody paid for. So it is never stopped for being quiet.
-  auto_stop_machines = "off"
+  # STOPS WHEN IDLE, starts on the next request (as the studio's other games do). What makes that safe for songs and
+  # videos, which are made in the background (server.js, "jobs"):
+  #   - while a job runs the machine asks for its own /healthz through the public address, so it is not idle;
+  #   - a maker watching the progress page asks every 1.5 s, which keeps it up too;
+  #   - if it is stopped anyway (a deploy, a crash), the job is this machine's in the database: at the next start it
+  #     is put back in the queue and run without waiting for a request, and a song already made is not bought twice;
+  #   - a carol finished with nobody watching is announced to its maker by email.
+  auto_stop_machines = "stop"
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 0
 
   # 200 only when the database answers. It tells a deploy that the new machine is really up, and takes a machine
   # that has lost its database out of the way of requests.

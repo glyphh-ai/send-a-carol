@@ -174,7 +174,7 @@ const CSS = [
   'header.top{background:var(--night);color:#fff;padding:env(safe-area-inset-top) 0 0;border-bottom:4px solid var(--gold)}',
   'header.top .bar{display:flex;align-items:center;gap:18px;min-height:60px}',
   '.mark{font:italic 700 25px var(--serif);color:#fff;text-decoration:none;white-space:nowrap}.mark:hover{color:#fff}',
-  'header.top .back{margin-left:auto;font:700 13px var(--sans);letter-spacing:.06em;text-transform:uppercase;text-decoration:none;color:#fff;border:1px solid var(--gold);border-radius:999px;padding:9px 18px}header.top .back:hover{background:rgba(255,255,255,.1);color:#fff}',
+  'header.top .back{margin-left:auto;font:700 clamp(11px,3vw,13px) var(--sans);letter-spacing:.04em;text-transform:uppercase;text-decoration:none;color:#fff;border:1px solid var(--gold);border-radius:999px;padding:9px clamp(11px,3.4vw,18px);white-space:nowrap}header.top .back:hover{background:rgba(255,255,255,.1);color:#fff}',
   'header.top .head{padding:34px 0 40px}',
   '.kick{font:700 13px var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin:0 0 10px}',
   'h1{font:700 clamp(32px,6vw,50px)/1.1 var(--serif);letter-spacing:.01em;margin:0;color:#fff}',

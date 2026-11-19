@@ -9,7 +9,7 @@ opens is "the card". Christmas is the launch occasion, not the product.
 The name, the domain, the tagline, the prices and the limits are in ONE file, `config.js`. Nothing else types them.
 The folder is still called `carol-time` (the working name); the app's id everywhere is `send-a-carol`.
 
-A Glyphh game. Version 1, built locally: no GitHub repository, no Fly app, no domain, nothing deployed.
+A Glyphh game. Built locally; deployed only by `./deploy.sh`, by its owner.
 
 ## What is here
 
@@ -22,7 +22,7 @@ A Glyphh game. Version 1, built locally: no GitHub repository, no Fly app, no do
 | `song.js`, `beat.js` | the song (ElevenLabs music API), loudness and fade (ffmpeg), where the beats are (plain arithmetic) |
 | `engine.js`, `templates.js`, `art.js`, `fonts.js` | THE TEMPLATE ENGINE: one set of plain JS that draws a frame at time `t` on a 2D canvas, used by the browser (live preview, the recipient's interactive card) and by the server (the mp4) |
 | `render.js` | the server's renderer: `@napi-rs/canvas` frames piped to `ffmpeg` |
-| `email.js` | the sign-in link and "a carol for you" emails (Resend), and "don't email me again" |
+| `email.js` | the sign-in link, "a carol for you" and "your carol is ready" emails (Resend), and "don't email me again" |
 | `admin.js`, `admin.html`, `admin-ui.js` | the admin: tools used by the /admin page and by `/mcp?admin=<key>` |
 | `brand.js` | the lockup: the mark as SVG, and the icons, default share image and email header drawn from it |
 | `landing.html`, `landing.js`, `app.html`, `app.js`, `card.html`, `card.js`, `style.css`, `net.js` | the pages: landing, the maker's flow, the recipient's card; `net.js` is the outbox and the safe reload |
@@ -30,6 +30,8 @@ A Glyphh game. Version 1, built locally: no GitHub repository, no Fly app, no do
 | `fonts/` | twenty open-licence faces (OFL 1.1 and Apache 2.0; the licences are in the folder), registered under our own family names in both renderers |
 | `examples/` | the three real carols the landing page's hero plays (made by `tools/proof.cjs`) |
 | `tools/proof.cjs` | the real, paid end-to-end run |
+| `tools/email-proof.cjs`, `tools/stripe-proof.cjs`, `tools/r2-proof.cjs` | the real services, each exercised once by hand: one real email, test-mode Checkout paid on Stripe's own page, the storage adapter against a real bucket under `send-a-carol/test/` |
+| `tools/pgtest.cjs`, `tools/dockercheck.cjs` | the whole test suite and `--check` on a throwaway local Postgres (Unix socket, no port); the image built and checked with no network |
 | `test/` | the tests (`npm test`); `test/kit.cjs` is the in-process harness with fakes for everything outside |
 | `deploy.sh`, `fly.toml`, `Dockerfile` | written and syntax-checked; never run |
 
@@ -43,6 +45,14 @@ origin into it.
    from, and what they are to you; the mood (a template); photos (0 to 8, originals up to 25 MB kept privately, a
    1600 px copy made on the server); a few true details; optionally a line that must be in the song, or their own
    lyrics. The questions are the page's own (they cost nothing); the writing is one call to the agent.
+   **The card is made at the conversation's first answer** (not at the first photo): from then on it is a draft in
+   "My carols", listed by who it is for, where it can be carried on or deleted. Photos can be added only after the
+   maker ticks that they may use them (the one thing a maker confirms; the legal pages are drafts and nothing is
+   recorded as agreed to). **HEIC** (an iPhone's own format) is accepted: the page converts it where the browser
+   can read it (Safari), otherwise the server does, with `heif-convert` (Debian's `libheif-examples`, in the
+   image) or `sips` on a Mac; only when neither can is it refused, with a sentence.
+   Who it is for, who it is from and what they are to the maker are typed in ONE panel (`whoFields` in `app.js`):
+   the conversation's second question and the editor's "Who it is for" are both it.
 3. **The agent writes the carol**: a title, a lyric of 6 to 8 lines (a verse and a hook) that fits 20 to 40 seconds,
    the on-screen greeting and sign-off, the music direction, and which photo goes in which scene with a caption.
    The answer is JSON held to a schema by the API (structured outputs) and checked again in `agent.check()`.
@@ -79,7 +89,18 @@ Christmas: snow belongs to a template or to the landing page's date-driven dress
 A template is data in `templates.js`: an occasion and a family, a look (palette, type pairing, border), a cast, a
 backdrop, photo-frame styles, 4 to 6 timed scenes (title, photo scenes, a lyric scene, the sign-off), motion, how the
 lyric appears (karaoke, line by line at the bottom, never over a face), and its music direction and lyric tone. All
-art is drawn in code (`art.js`): no stock art, no emoji, no copyrighted characters. The gallery is search + occasion
+art is drawn in code (`art.js`): no stock art, no emoji, no copyrighted characters.
+
+**Which frame a photo gets, and how it sits in it** (plain arithmetic on shapes; nothing looks at the picture, and
+there is no model of any kind). A round or shaped frame (ornament, snow globe, wreath, locket, star, bubble, bowl,
+medal, balloon) crops hard, so it only gets a photo the maker marked "One person"; when none is marked, the first
+upright photo gets the template's shaped frame. Every other photo gets one of the template's rectangular frames (a
+plain one if it has none), and a wide photo makes that frame wide (`aspectFor`). In its window a photo is
+cover-fitted but never loses more than 14% of its width or 20% of its height, so a group stays whole (where it then
+does not fill the window, a darkened close-up of itself fills the rest); a "one person" photo fills the window. The
+maker can **move a photo in its frame** in the editor (drag, zoom): a point and a zoom kept with the photo
+(`scene.fit`), which outlives a rewrite by the agent. With few photos the cast performs between them in lyric
+scenes: no drawn stand-in scene, no repeated "For <name>" tag. The gallery is search + occasion
 and family filters + pagination from day one (`/api/templates`). The list is at the end of this file.
 
 ### One renderer
@@ -92,9 +113,24 @@ in both shapes; a small silent gif (360 px, 4 seconds) for link unfurls. The fon
 the same family names in both places (`fonts.js`).
 
 Rendering is a background job: rows in `jobs` (queued, running, done, failed; stage and percent), one at a time on a
-machine (`limits.jobsAtOnce`), at most 3 tries. A restart puts what was running back in the queue; a song that was
-already made is found by its job id and is not asked for (or paid for) twice; a server that is stopping kills the
-render and leaves the job to be queued again. Caps: 60 seconds and 80 MB a video (`config.video`).
+machine (`limits.jobsAtOnce`), at most 3 tries. **A job is claimed with a lease** (`jobs.owner`, `jobs.lease`): the
+claim is one UPDATE only one asker can win; the holder renews its lease while it works; a machine's own start puts
+back what it was running; another machine's start leaves a held job alone and takes it only when its lease (a
+minute) has run out; a machine that finds its lease gone stops and writes nothing. So neither a second machine nor
+a restart runs a job twice, and a song that was already made is found by its job id and is not asked for (or paid
+for) twice. A server that is stopping kills the render and leaves the job to be run at the next start. Caps: 60
+seconds and 80 MB a video (`config.video`).
+
+**The machine stops when idle** (`fly.toml`: `auto_stop_machines = "stop"`, `min_machines_running = 0`). While a
+job runs the machine asks for its own `/healthz` through the public address (traffic keeps it up); a maker's
+progress page asks every 1.5 s; at a start (`boot()`), with no request needed, what the machine was running is put
+back and run (`test/restart.cjs` kills a real worker process in the middle of a video, with `kill -9` and with
+SIGTERM, and starts it again); and a carol finished with nobody watching is announced to its maker by email
+("Your carol is ready").
+
+**The card knows when its video is older than its last edit**: `cards.rendered` is a hash of what the video was made
+from; the maker's view says `stale` when the card would now draw something else, and "Update the video" (in the
+editor and on the ready screen) is offered from that, never from something the page remembers.
 
 ### The song
 
@@ -182,9 +218,14 @@ style words, never photos or addresses.
   first answer (`idem` table) without doing the work again.
 - **`/healthz`** answers 200 only when the database does.
 - **`node server.js --check`** is Fly's release command: no port, no row changed. It refuses a build that removes or
-  renames a table or column outside the cleanup list, applies the schema, reads every table with every column, plans
-  every statement the code sends, opens every saved carol, and fails on a machine without `DATABASE_URL` or the R2
-  settings.
+  renames a table or column outside the cleanup list, applies the schema (the first deploy's empty database gets it
+  here), reads every table with every column, plans every statement the code sends and opens every saved carol. On
+  the live machine it fails only for what makes the site unusable: no `DATABASE_URL`, no `SESSION_SECRET`.
+- **A missing secret switches its feature off, and the site says so** (each is a line `off:  <feature> (no <NAME>)`
+  in the check, never a failure): no Stripe key, and the pay sheet says purchases open soon and no Checkout is
+  attempted (the admin can grant credits, with a reason); no Google client id, and only the emailed link is offered;
+  no storage settings on the live machine, and uploads and songs are refused with a sentence (never the machine's
+  own disk: it is thrown away at every start); no agent or music key, and writing or singing is closed with a sentence.
 - **The schema only grows.** Saved carols carry a version (`cards.v`, `doc.v`); `docOf()` is the one place an older
   one is brought up to date; fixtures of saved carols are kept in `test/fixtures`.
 - **A contract snapshot** (`test/contract.json`): a route that goes, a field that goes or changes type, fails the tests.
@@ -203,8 +244,15 @@ style words, never photos or addresses.
 | `STRIPE_SECRET_KEY` | payments |
 | `ANTHROPIC_API_KEY`, `CLAUDE_MODEL`, `CLAUDE_EFFORT` | the writing agent. The model's id is a setting: no model is named in this repository |
 | `ELEVENLABS_API_KEY`, `ELEVEN_MUSIC_MODEL` | the song. The music model's id is a setting too |
-| `R2_ENDPOINT`, `R2_BUCKET`, `R2_PREFIX`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | media. `R2_PREFIX` is `send-a-carol/` |
-| `DATA_DIR`, `PORT`, `FFMPEG` | where the SQLite file and the local store live; the port; another ffmpeg |
+| `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | media: any S3-compatible bucket, as plain config |
+| `R2_REGION`, `R2_PREFIX` | optional: the signing region (`auto`, R2's, by default) and the folder (`send-a-carol/` by default) |
+| `DATA_DIR`, `PORT`, `FFMPEG`, `HEIF_CONVERT` | where the SQLite file and the local store live; the port; another ffmpeg; another heif-convert |
+| `FLY_APP_NAME`, `FLY_MACHINE_ID` | set by Fly: "this is the live machine" (no folder to fall back to; it keeps itself awake while a job runs), and the name a job's lease is held under |
+| `R2_TEST_ENDPOINT`, `R2_TEST_BUCKET`, `R2_TEST_ACCESS_KEY_ID`, `R2_TEST_SECRET_ACCESS_KEY` | only `tools/r2-proof.cjs` reads these (a laptop's `.env`), so that a local run of the app can never write to a shared bucket |
+
+Only keys are ever written to the database (`photos.okey/skey`, `takes.akey`, `media.mkey`: `cards/<id>/...`),
+never an address: moving to another bucket is a copy of the objects under the prefix and a change of these
+settings. Photos and originals are never public: they are served only through the app.
 
 ## The templates at launch (33)
 
@@ -224,14 +272,21 @@ outside the safe area; cuts on beats; families and occasions covered; everyday t
 ## The real run (2026-11-18, `tools/proof.cjs`)
 
 Three carols made end to end with real calls (the writing agent, the music service, real renders), made-up people
-and code-drawn placeholder photos: `the-timmermans-2026` (cozy-mantel), `for-uncle-dave` (ugly-sweater-party),
-`nora-is-thirty` (birthday-bash). Used: 3 songs of the 5 allowed, 4 agent calls (3 carols and one refusal probe).
+(nobody's real name) and code-drawn placeholder photos: `the-hollisters-2026` (cozy-mantel; a wide group, an upright
+"one person" photo, a wide pair), `for-uncle-dave` (ugly-sweater-party), `nora-is-thirty` (birthday-bash). Used in
+all: 4 songs of the 5 allowed, 5 agent calls (4 carols, one of them since replaced, and one refusal probe).
 What each cost us, from the ledger: the words $0.03 to $0.05 (about 2,550 tokens in, 1,100 to 1,900 out), the song
 $0.09 to $0.10 (35 to 40 seconds at $0.15 a minute); $0.12 to $0.15 a carol with one take, about $0.35 with all
 three takes and a few rewrites. A render of both shapes took 32 to 46 seconds on the development Mac.
 The music service kept every section's length to the millisecond and the measured tempo matched the tempo asked for
-(95.99 for 96, 132.12 for 132, 125.98 for 126). Storage ran on the local-disk adapter: the R2 endpoint and bucket
-were not available here, so R2 itself has not been exercised. Nobody has heard the songs.
+(95.99 for 96, 132.12 for 132, 125.98 for 126). The carols' media ran on the local-disk adapter. Nobody has heard
+the songs.
+
+The real services, each once (2026-11-18): one carol email sent through Resend; three test-mode Checkout Sessions
+(499, 1499, 2499) with one paid on Stripe's hosted page and confirmed once, and one paid and recovered at the next
+`/api/me`; put, head, ranged get, list and delete through the storage adapter against a real bucket under
+`send-a-carol/test/`, left empty; the suite and `--check` on Postgres 16; the image built, and inside it (no
+network) the check, ffmpeg, the fonts, a short render and a HEIC conversion.
 
 ## Decisions made where the brief was silent
 
@@ -244,9 +299,10 @@ were not available here, so R2 itself has not been exercised. Nobody has heard t
 - The recipient's card is the engine running live with the song (so it can be played with); the mp4 is for saving,
   sharing and as the fallback.
 - Card emails keep only a hash of each recipient's address. "Don't email me again" stops every maker's emails.
-- The photo copy the video uses is 1600 px; HEIC is refused with a sentence (the canvas library cannot read it).
+- The photo copy the video uses is 1600 px; a HEIC original is kept as it came, beside its JPEG copy.
 - Prices are config, not admin-editable; limits can be overridden in the admin.
-- No webhook (see Money). One machine only: a second would take the first one's jobs at its start.
+- No webhook (see Money). One machine is what `fly.toml` runs; the job lease is what makes a second one safe.
+- The machine keeps itself awake during a job by asking for its own `/healthz` through the public address.
 - X gets `summary_large_image` (a player card needs X's approval); the unfurl image is the square poster, then the gif.
 
 ## Next (not in version 1)

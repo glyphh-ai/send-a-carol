@@ -8,9 +8,9 @@
     "template": "cozy-mantel",
     "occasion": "christmas",
     "state": "draft",
-    "title": "A Carol for Grandma June",
+    "title": "A Carol for Grandma Dot",
     "v": 1,
-    "doc": "{\"v\":1,\"answers\":{\"to\":\"Grandma June\",\"from\":\"The Timmermans\",\"relation\":\"grandparents\",\"details\":\"Biscuit the dog ate the gingerbread house. Theo lost his first tooth.\"},\"script\":{\"title\":\"A Carol for Grandma June\",\"greeting\":\"Hello, Grandma June!\",\"signoff\":\"With love, The Timmermans\",\"lyrics\":[{\"section\":\"verse\",\"lines\":[\"The lights are up along the street tonight\",\"And every window has a little glow\",\"We saved a seat for you beside the fire\",\"And all the stories only we would know\"]},{\"section\":\"hook\",\"lines\":[\"So here is a carol, made for you\",\"Sing it loud, the whole way through\"]}],\"music\":{\"styles\":[\"warm acoustic folk\",\"upright piano\",\"soft brushed drums\",\"hand claps\",\"gentle strings\",\"cozy\"],\"bpm\":120,\"voices\":\"warm lead vocal with group harmonies\",\"notes\":\"Bright and warm.\"},\"scenes\":[{\"pid\":\"ptH7GWivtYyY\",\"caption\":\"The whole gang\"},{\"pid\":\"p9RRPdWLxxFY\",\"caption\":\"\"}]},\"note\":\"I leaned on the details you gave.\"}"
+    "doc": "{\"v\":1,\"answers\":{\"to\":\"Grandma Dot\",\"from\":\"The Hollisters\",\"relation\":\"grandparents\",\"details\":\"Waffles the dog ate the gingerbread house. Milo lost his first tooth.\"},\"script\":{\"title\":\"A Carol for Grandma Dot\",\"greeting\":\"Hello, Grandma Dot!\",\"signoff\":\"With love, The Hollisters\",\"lyrics\":[{\"section\":\"verse\",\"lines\":[\"The lights are up along the street tonight\",\"And every window has a little glow\",\"We saved a seat for you beside the fire\",\"And all the stories only we would know\"]},{\"section\":\"hook\",\"lines\":[\"So here is a carol, made for you\",\"Sing it loud, the whole way through\"]}],\"music\":{\"styles\":[\"warm acoustic folk\",\"upright piano\",\"soft brushed drums\",\"hand claps\",\"gentle strings\",\"cozy\"],\"bpm\":120,\"voices\":\"warm lead vocal with group harmonies\",\"notes\":\"Bright and warm.\"},\"scenes\":[{\"pid\":\"ptH7GWivtYyY\",\"caption\":\"The whole gang\"},{\"pid\":\"p9RRPdWLxxFY\",\"caption\":\"\"}]},\"note\":\"I leaned on the details you gave.\"}"
   },
   "photos": [
     "ptH7GWivtYyY",

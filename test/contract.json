@@ -86,6 +86,11 @@
         "build": "string",
         "config": "object",
         "config.agent": "boolean",
+        "config.closed": "object",
+        "config.closed.agent": "string",
+        "config.closed.music": "string",
+        "config.closed.pay": "string",
+        "config.closed.storage": "string",
         "config.currency": "string",
         "config.domain": "string",
         "config.email": "boolean",
@@ -122,6 +127,7 @@
         "config.packs[].soon": "boolean",
         "config.payments": "boolean",
         "config.site": "string",
+        "config.storage": "boolean",
         "config.support": "string",
         "config.tagline": "string",
         "config.video": "object",
@@ -196,6 +202,11 @@
       "answers": {
         "config": "object",
         "config.agent": "boolean",
+        "config.closed": "object",
+        "config.closed.agent": "string",
+        "config.closed.music": "string",
+        "config.closed.pay": "string",
+        "config.closed.storage": "string",
         "config.currency": "string",
         "config.domain": "string",
         "config.email": "boolean",
@@ -232,6 +243,7 @@
         "config.packs[].soon": "boolean",
         "config.payments": "boolean",
         "config.site": "string",
+        "config.storage": "boolean",
         "config.support": "string",
         "config.tagline": "string",
         "config.video": "object",
@@ -259,11 +271,11 @@
           "body": {
             "template": ":template",
             "answers": {
-              "to": "Grandma June",
-              "from": "The Timmermans",
+              "to": "Grandma Dot",
+              "from": "The Hollisters",
               "relation": "grandparents",
-              "details": "Biscuit the dog ate the gingerbread house.",
-              "must": "Biscuit",
+              "details": "Waffles the dog ate the gingerbread house.",
+              "must": "Waffles",
               "own": ""
             }
           }
@@ -302,6 +314,7 @@
         "card.id": "string",
         "card.job": "null",
         "card.media": "array",
+        "card.mv": "string",
         "card.note": "string",
         "card.occasion": "string",
         "card.opens": "number",
@@ -313,6 +326,7 @@
         "card.sent": "number",
         "card.shared": "boolean",
         "card.slug": "string",
+        "card.stale": "boolean",
         "card.state": "string",
         "card.take": "string",
         "card.takes": "array",
@@ -395,6 +409,7 @@
         "card.engine.lyrics[].section": "string",
         "card.engine.scenes": "array",
         "card.engine.scenes[]": "object",
+        "card.engine.scenes[].ar": "number",
         "card.engine.scenes[].caption": "string",
         "card.engine.scenes[].photo": "number",
         "card.engine.signoff": "string",
@@ -425,6 +440,7 @@
         "card.job": "null",
         "card.media": "array",
         "card.media[]": "string",
+        "card.mv": "string",
         "card.note": "string",
         "card.occasion": "string",
         "card.opens": "number",
@@ -461,6 +477,7 @@
         "card.sent": "number",
         "card.shared": "boolean",
         "card.slug": "string",
+        "card.stale": "boolean",
         "card.state": "string",
         "card.take": "string",
         "card.takes": "array",
@@ -486,11 +503,11 @@
           "body": {
             "v": 1,
             "answers": {
-              "to": "Grandma June",
-              "from": "The Timmermans",
+              "to": "Grandma Dot",
+              "from": "The Hollisters",
               "relation": "grandparents",
-              "details": "Biscuit the dog ate the gingerbread house.",
-              "must": "Biscuit",
+              "details": "Waffles the dog ate the gingerbread house.",
+              "must": "Waffles",
               "own": ""
             }
           }
@@ -502,9 +519,9 @@
           "body": {
             "v": 1,
             "script": {
-              "title": "A Carol for Grandma June",
-              "greeting": "Hello, Grandma June!",
-              "signoff": "With love, The Timmermans",
+              "title": "A Carol for Grandma Dot",
+              "greeting": "Hello, Grandma Dot!",
+              "signoff": "With love, The Hollisters",
               "lyrics": [
                 {
                   "section": "verse",
@@ -532,7 +549,7 @@
               ]
             },
             "notes": {
-              ":pid0": "Grandma June and Theo"
+              ":pid0": "Grandma Dot and Milo"
             },
             "template": ":template",
             "slug": ":slug"
@@ -586,6 +603,7 @@
         "card.engine.lyrics[].section": "string",
         "card.engine.scenes": "array",
         "card.engine.scenes[]": "object",
+        "card.engine.scenes[].ar": "number",
         "card.engine.scenes[].caption": "string",
         "card.engine.scenes[].photo": "number",
         "card.engine.signoff": "string",
@@ -616,6 +634,7 @@
         "card.job": "null",
         "card.media": "array",
         "card.media[]": "string",
+        "card.mv": "string",
         "card.note": "string",
         "card.occasion": "string",
         "card.opens": "number",
@@ -652,6 +671,7 @@
         "card.sent": "number",
         "card.shared": "boolean",
         "card.slug": "string",
+        "card.stale": "boolean",
         "card.state": "string",
         "card.take": "string",
         "card.takes": "array",
@@ -676,11 +696,11 @@
           "on": "new",
           "body": {
             "answers": {
-              "to": "Grandma June",
-              "from": "The Timmermans",
+              "to": "Grandma Dot",
+              "from": "The Hollisters",
               "relation": "grandparents",
-              "details": "Biscuit the dog ate the gingerbread house.",
-              "must": "Biscuit",
+              "details": "Waffles the dog ate the gingerbread house.",
+              "must": "Waffles",
               "own": ""
             }
           }
@@ -744,6 +764,7 @@
         "card.id": "string",
         "card.job": "null",
         "card.media": "array",
+        "card.mv": "string",
         "card.note": "string",
         "card.occasion": "string",
         "card.opens": "number",
@@ -770,6 +791,7 @@
         "card.sent": "number",
         "card.shared": "boolean",
         "card.slug": "string",
+        "card.stale": "boolean",
         "card.state": "string",
         "card.take": "string",
         "card.takes": "array",
@@ -825,6 +847,7 @@
         "card.job.stage": "string",
         "card.job.state": "string",
         "card.media": "array",
+        "card.mv": "string",
         "card.note": "string",
         "card.occasion": "string",
         "card.opens": "number",
@@ -851,6 +874,7 @@
         "card.sent": "number",
         "card.shared": "boolean",
         "card.slug": "string",
+        "card.stale": "boolean",
         "card.state": "string",
         "card.take": "string",
         "card.takes": "array",
@@ -893,6 +917,7 @@
         "engine.lyrics[].section": "string",
         "engine.scenes": "array",
         "engine.scenes[]": "object",
+        "engine.scenes[].ar": "number",
         "engine.scenes[].caption": "string",
         "engine.scenes[].photo": "number",
         "engine.signoff": "string",
@@ -928,6 +953,8 @@
         "job.state": "string",
         "media": "array",
         "media[]": "string",
+        "mv": "string",
+        "stale": "boolean",
         "state": "string",
         "take": "string",
         "takes": "array",
@@ -960,6 +987,7 @@
         "engine.lyrics[].section": "string",
         "engine.scenes": "array",
         "engine.scenes[]": "object",
+        "engine.scenes[].ar": "number",
         "engine.scenes[].caption": "string",
         "engine.scenes[].photo": "number",
         "engine.signoff": "string",
@@ -1134,6 +1162,7 @@
         "card.engine.lyrics[].section": "string",
         "card.engine.scenes": "array",
         "card.engine.scenes[]": "object",
+        "card.engine.scenes[].ar": "number",
         "card.engine.scenes[].caption": "string",
         "card.engine.scenes[].photo": "number",
         "card.engine.signoff": "string",
@@ -1164,6 +1193,7 @@
         "card.job": "null",
         "card.media": "array",
         "card.media[]": "string",
+        "card.mv": "string",
         "card.note": "string",
         "card.occasion": "string",
         "card.opens": "number",
@@ -1200,6 +1230,7 @@
         "card.sent": "number",
         "card.shared": "boolean",
         "card.slug": "string",
+        "card.stale": "boolean",
         "card.state": "string",
         "card.take": "string",
         "card.takes": "array",

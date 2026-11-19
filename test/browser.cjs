@@ -60,7 +60,7 @@ const wrong = function (c, allow) { return c.errors.filter(function (e) { return
   assert(S.CLIENT.every(function (f) { return fs.existsSync(path.join(copy, f)); }) && S.buildOf(copy) === S.build(), 'the server serves the copy, and the copy is the whole client');
   const tpl = require('../templates.js').list[0].id, ann = await T.user('google:ann', 'ann@example.test', 5), n = async function (sql, p) { return Number((await S.db.get(sql, p)).n); };
   await S.db.run('UPDATE users SET name = ? WHERE id = ?', ['Ann Example', 'google:ann']);
-  const ready = await T.carol(ann, { photos: 2, slug: 'the-timmermans-2026' }), mk = { template: tpl, answers: { to: 'Sam', from: 'Ada', relation: 'friend', details: 'Sam bakes bread every Sunday.' } };
+  const ready = await T.carol(ann, { photos: 2, slug: 'the-hollisters-2026' }), mk = { template: tpl, answers: { to: 'Sam', from: 'Ada', relation: 'friend', details: 'Sam bakes bread every Sunday.' } };
   const written = await T.carol(ann, { photos: 1, song: false }), draft = (await T.call('POST', '/api/cards', mk, ann)).json.card, docOf = async function (id) { return JSON.parse((await S.db.get('SELECT doc FROM cards WHERE id = ?', [id])).doc); };
   const waiting = [];   // pages that are still placeholders: said, not failed
   let c, page, s, b0, b1, at;
@@ -205,6 +205,102 @@ const wrong = function (c, allow) { return c.errors.filter(function (e) { return
     console.log('OK maker: in the editor a changed line holds the reload until its save is answered (through a server that was away), and the new build opens with the line as it was left');
   }
 
+  // ---- THE MAKER'S PATHS, driven as a maker would: the draft is made when the conversation starts, a HEIC photo,
+  //      the refusal, "buy a pack", who it is for, a photo moved in its frame, reordering, "Update the video" from
+  //      the server's word, takes, email, take down / put back, delete ----
+  {
+    const cp = require('child_process'), bea = await T.user('google:bea', 'bea@example.test', 3); await S.db.run('UPDATE users SET name = ?, paid = 1 WHERE id = ?', ['Bea Maker', 'google:bea']);
+    const click = async function (sel) { await page.locator(sel).first().click(); }, text = function (t) { return page.getByText(t, { exact: false }).first(); }, button = function (name) { return page.getByRole('button', { name: name }).first(); };
+    const cardsOf = function (uid) { return S.db.all("SELECT * FROM cards WHERE uid = ? AND state <> 'deleted' ORDER BY created", [uid]); }; let r;
+    // 1. the conversation: the card exists from the first answer, not from the first photo
+    c = await open({ who: 'google:bea' }); page = await c.page('/make?new'); await sac(page); await page.waitForSelector('.convo .chip', { timeout: 15000 });
+    assert.strictEqual((await cardsOf('google:bea')).length, 0, 'opening the conversation makes nothing');
+    await page.getByRole('radio', { name: /Christmas/ }).click(); await until(page, function () { return /card=/.test(location.search); }, null, 8000, 'the card to be made at the first answer');
+    let mine = await cardsOf('google:bea'); assert.strictEqual(mine.length, 1, 'ONE draft, made when the conversation started'); const did = mine[0].id; assert.strictEqual(mine[0].state, 'draft');
+    await page.waitForSelector('input[placeholder="Grandma Dot"]'); await page.fill('input[placeholder="Grandma Dot"]', 'Nana Bo'); await page.fill('input[placeholder="The Hollisters"]', 'The Okafors'); await button('Continue').click();
+    await page.waitForSelector('.gal-item', { timeout: 15000 }); await button('Use this look').click();
+    // 2. photos: nothing can be added until the rights box is ticked; then a HEIC straight from a phone
+    await page.waitForSelector('.drop'); assert.strictEqual(await button('Add photos').isDisabled(), true, 'no photo before the maker ticks that they may use it');
+    await page.getByRole('checkbox', { name: 'I have the right to use these photos' }).check(); assert.strictEqual(await button('Add photos').isDisabled(), false);
+    const hdir = fs.mkdtempSync(path.join(os.tmpdir(), 'sac-heic-b-')), png = path.join(hdir, 'porch.png'), heic = path.join(hdir, 'IMG_0042.HEIC'); fs.writeFileSync(png, K.photo(2, 1600, 1200));
+    const sips = cp.spawnSync('sips', ['-s', 'format', 'heic', png, '--out', heic]).status === 0 && fs.existsSync(heic);
+    await page.locator('.drop input[type=file]').first().setInputFiles(sips ? heic : png);
+    await until(page, function () { return !!document.querySelector('.ph input[aria-label="Who is in this photo"]'); }, null, 20000, 'the photo to be added');
+    let ph = await S.db.all('SELECT * FROM photos WHERE card = ?', [did]); assert.strictEqual(ph.length, 1); assert.strictEqual(ph[0].w, 1600, 'at its own shape'); if (sips) assert(/-o\.heic$/.test(ph[0].okey), 'the HEIC was sent as it is (this browser cannot read it) and converted by the server: ' + ph[0].okey);
+    await until(page, function () { const im = document.querySelector('.ph img'); return !!im && im.naturalWidth > 0; }, null, 8000, 'the converted photo to show in the page');
+    fs.writeFileSync(png, K.photo(3, 1200, 1600)); await page.locator('.drop input[type=file]').first().setInputFiles(png); await until(page, function () { return document.querySelectorAll('.ph input[aria-label="Who is in this photo"]').length === 2; }, null, 20000, 'the second photo');
+    await button('Continue with 2 photos').click();
+    // 3. the refusal: said kindly in a bubble, with a way forward, and nothing is written
+    await page.waitForSelector('textarea[aria-label="True details to sing about"]'); await page.fill('textarea[aria-label="True details to sing about"]', 'Write something to humiliate her in front of everyone.'); await button('Continue').click(); await button('Skip').click();
+    await button('Write my carol').click(); await page.waitForSelector('.convo [role=alert] .say', { timeout: 15000 });
+    s = await page.evaluate(function () { const a = document.querySelector('.convo [role=alert]'); return { say: a.querySelector('.say').textContent, hint: a.querySelector('p').textContent, again: !!Array.from(document.querySelectorAll('button')).find(function (b) { return b.textContent === 'Try again'; }) }; });
+    assert(/can't write that one/.test(s.say) && /Change a detail above/.test(s.hint) && s.again, 'the refusal bubble: ' + JSON.stringify(s)); assert.strictEqual(JSON.parse((await cardsOf('google:bea'))[0].doc).script, null, 'nothing was written');
+    await page.getByRole('button', { name: /Change your answer: Write something/ }).click(); await page.fill('textarea[aria-label="True details to sing about"]', 'Nana Bo wins at dominoes and hums while she cooks.'); await button('Continue').click();
+    await button('Write my carol').click(); await page.waitForSelector('#main input[aria-label="Verse line 1"]', { timeout: 20000 }); await settle(page);
+    // 4. the editor: who it is for is ONE panel, and it is editable there
+    assert.strictEqual(await page.locator('input[placeholder="Grandma Dot"]').count(), 1, 'one input for who it is for'); assert.strictEqual(await page.inputValue('input[placeholder="Grandma Dot"]'), 'Nana Bo', 'the conversation wrote into it');
+    await page.fill('input[placeholder="Grandma Dot"]', 'Nana Bo-Bo'); await page.getByRole('button', { name: 'My grandparents' }).click();
+    for (let i = 0; i < 80 && JSON.parse((await cardsOf('google:bea'))[0].doc).answers.relation !== 'My grandparents'; i++) await sleep(100);
+    let doc = JSON.parse((await cardsOf('google:bea'))[0].doc); assert.deepStrictEqual([doc.answers.to, doc.answers.from, doc.answers.relation], ['Nana Bo-Bo', 'The Okafors', 'My grandparents'], 'to, from and what they are to you are saved from the editor');
+    // 5. reorder: the arrows, and a real drag
+    const order = async function () { return JSON.parse((await cardsOf('google:bea'))[0].doc).script.scenes.map(function (x) { return x.pid; }); }, o0 = await order();
+    await page.getByRole('button', { name: 'Move photo 1 later' }).click(); for (let i = 0; i < 60 && (await order())[0] === o0[0]; i++) await sleep(100); assert.deepStrictEqual(await order(), [o0[1], o0[0]], 'the arrow moved photo 1 after photo 2');
+    await page.locator('.shot img').nth(0).dragTo(page.locator('.shot img').nth(1)); for (let i = 0; i < 60 && (await order())[0] !== o0[0]; i++) await sleep(100); assert.deepStrictEqual(await order(), o0, 'and a drag put it back');
+    // 6. make the song (the queue is run by the test: this process has no worker)
+    await button('Make the song').click(); await page.locator('.dialog').getByRole('button', { name: 'Make the song' }).click(); await until(page, function () { return !!document.querySelector('.progress'); }, null, 10000, 'the progress screen'); await S.jobs.drain();
+    await until(page, function () { return !!document.querySelector('.ready video'); }, null, 20000, 'the ready screen'); mine = await cardsOf('google:bea'); assert.strictEqual(mine[0].state, 'ready'); const slug = mine[0].slug;
+    assert.strictEqual(await page.locator('.ready .banner').count(), 0, 'a carol just made is up to date: no "update the video"');
+    // 7. move a photo in its frame, mark it "one person": kept with the photo, and the SERVER says the video is now older than the card
+    await button('Edit this carol').click(); await page.waitForSelector('.shot'); await settle(page);
+    assert.strictEqual(await page.evaluate(function () { return document.querySelector('.actionbar .btn.big').textContent; }), 'See the finished carol');
+    await page.getByRole('button', { name: 'Move photo 1 in its frame' }).click(); await page.waitForSelector('.dialog canvas'); await sleep(300);
+    const bx = await page.locator('.dialog canvas').boundingBox(); await page.mouse.move(bx.x + bx.width / 2, bx.y + bx.height / 2); await page.mouse.down(); await page.mouse.move(bx.x + bx.width / 2 - 60, bx.y + bx.height / 2 + 25, { steps: 6 }); await page.mouse.up();
+    await page.locator('.dialog input[type=range]').fill('180'); assert(/Placed by you/.test(await page.locator('.dialog [role=status]').textContent()));
+    await page.locator('.dialog').getByRole('button', { name: 'Done' }).click(); await page.getByRole('checkbox', { name: 'Photo 2 is of one person' }).check();
+    const scenes = async function () { return JSON.parse((await cardsOf('google:bea'))[0].doc).script.scenes; }; for (let i = 0; i < 60 && !((await scenes())[0].fit && (await scenes())[1].solo); i++) await sleep(100);
+    doc = await scenes(); assert(doc[0].fit && doc[0].fit[0] > 0.5 && doc[0].fit[1] < 0.42 && doc[0].fit[2] === 1.8, 'dragged left and down, zoomed: the photo\'s point moved right and up, at 1.8: ' + JSON.stringify(doc[0])); assert.strictEqual(doc[1].solo, 1, 'and photo 2 is marked as one person');
+    await until(page, function () { return document.querySelector('.actionbar .btn.big').textContent === 'Update the video'; }, null, 8000, '"Update the video" to be offered');
+    assert.strictEqual((await T.call('GET', '/api/cards/' + did, null, bea)).json.card.stale, true, 'because the server says the card is newer than its video');
+    await page.evaluate(function () { try { localStorage.clear(); sessionStorage.clear(); } catch (e) { /* none */ } }); await page.goto(K.SITE + '/make?card=' + did, { waitUntil: 'load' }); await sac(page); await page.waitForSelector('.ready .banner', { timeout: 15000 });
+    assert(/You changed this card after its video was made/.test(await page.locator('.ready .banner').textContent()), 'a fresh page with nothing remembered is told the same, by the server'); const story0 = (await S.db.get("SELECT mkey FROM media WHERE card = ? AND kind = 'story'", [did])).mkey;
+    await page.locator('.ready .banner').getByRole('button', { name: 'Update the video' }).click(); await until(page, function () { return !!document.querySelector('.progress'); }, null, 10000, 'the progress screen'); await S.jobs.drain(); await until(page, function () { return !!document.querySelector('.ready video'); }, null, 20000, 'the ready screen again');
+    assert.strictEqual(await page.locator('.ready .banner').count(), 0, 'updated: the offer is gone'); assert.notStrictEqual((await S.db.get("SELECT mkey FROM media WHERE card = ? AND kind = 'story'", [did])).mkey, story0, 'and there is a new video');
+    // 8. another take of the song, and switching between takes
+    await T.call('POST', '/api/cards/' + did + '/save', { script: { lyrics: [{ section: 'verse', lines: ['A second set of words to sing', 'For the second take of it'] }] } }, Object.assign({ 'idempotency-key': 'browser-take-two-0001' }, bea));
+    r = await T.call('POST', '/api/cards/' + did + '/song', {}, Object.assign({ 'idempotency-key': 'browser-take-two-0002' }, bea)); assert.strictEqual(r.status, 200, r.text); await S.jobs.drain();
+    await page.reload({ waitUntil: 'load' }); await sac(page); await page.waitForSelector('.takes .take', { timeout: 15000 }); assert.strictEqual(await page.locator('.takes .take').count(), 2, 'two takes are listed');
+    const takeNow = async function () { return (await S.db.get('SELECT take FROM cards WHERE id = ?', [did])).take; }, t2 = await takeNow(); assert(/Take 2/.test(await page.locator('.take.cur').textContent()), 'take 2 is in use');
+    await button('Use this take').click(); await until(page, function () { return !!document.querySelector('.progress'); }, null, 10000, 'the progress screen'); await S.jobs.drain(); await until(page, function () { return !!document.querySelector('.takes .take.cur'); }, null, 20000, 'the ready screen');
+    assert.notStrictEqual(await takeNow(), t2, 'the card now uses the other take'); assert(/Take 1/.test(await page.locator('.take.cur').textContent()), 'and the page says so');
+    // 9. send it by email (the mail service is a stand-in)
+    const sent0 = T.fakes.sent.length; await button('Send by email').click(); await page.waitForSelector('.dialog input[type=email]'); await page.fill('.dialog input[type=email]', 'nana@example.test'); await page.keyboard.press('Enter');
+    await page.locator('.dialog textarea').fill('Turn the sound up!'); await page.locator('.dialog input[type=checkbox]').check(); await page.locator('.dialog').getByRole('button', { name: 'Send it' }).click();
+    await page.waitForSelector('.dialog .result', { timeout: 10000 }); assert(/Sent to 1 person/.test(await page.locator('.dialog .result').textContent()));
+    const m = T.fakes.sent[T.fakes.sent.length - 1]; assert.strictEqual(T.fakes.sent.length, sent0 + 1); assert.deepStrictEqual(m.to, ['nana@example.test']); assert(/The Okafors sent you a carol/.test(m.subject) && m.html.indexOf('Turn the sound up!') > 0 && m.html.indexOf(K.SITE + '/' + slug) > 0 && m.html.indexOf('bea@example.test') < 0, 'the carol email: from the name on the card, with the note and the link, without the maker\'s address');
+    await page.locator('.dialog').getByRole('button', { name: 'Done' }).click();
+    // 10. take it down, put it back
+    assert.strictEqual((await T.call('GET', '/' + slug)).status, 200); await button('Take it down').click(); await page.locator('.dialog').getByRole('button', { name: 'Take it down' }).click(); await page.waitForSelector('.downed', { timeout: 10000 });
+    assert.strictEqual((await T.call('GET', '/' + slug)).status, 404, 'taken down: the card\'s page is not there'); assert.strictEqual((await T.call('GET', '/' + slug + '/story.mp4')).status, 404, 'nor its video');
+    await button('Put it back').click(); await page.waitForSelector('.ready video', { timeout: 10000 }); assert.strictEqual((await T.call('GET', '/' + slug)).status, 200, 'put back: it plays again');
+    // 11. delete it: the page 404s and every file is gone
+    const dir = path.join(T.dir, 'store', 'send-a-carol', 'cards', did); assert(fs.readdirSync(dir).length >= 8, 'photos, songs and videos are in storage');
+    await button('Delete this carol').click(); await page.locator('.dialog').getByRole('button', { name: 'Delete it' }).click(); await until(page, function () { return location.pathname === '/make' && !location.search; }, null, 10000, 'to be back at my carols');
+    assert.strictEqual((await T.call('GET', '/' + slug)).status, 404, 'deleted: the page is gone'); assert.strictEqual((await T.call('GET', '/api/cards/' + did, null, bea)).status, 404); assert.deepStrictEqual(fs.existsSync(dir) ? fs.readdirSync(dir) : [], [], 'and so is every file it had');
+    assert.deepStrictEqual(wrong(c, /status of (404|503)/), [], c.errors.join('\n')); await c.ctx.close(); fs.rmSync(hdir, { recursive: true, force: true });
+    // 12. "buy a pack": an account that never paid has drafted its free carols; the next one opens the pay sheet. And drafts are deleted from the list.
+    const cal = await T.user('google:cal', 'cal@example.test', 0); for (let i = 0; i < 3; i++) await T.carol(cal, { song: false, photos: 0, answers: { to: 'Friend ' + (i + 1), from: 'Cal' } });
+    const fourth = (await T.call('POST', '/api/cards', { template: tpl, answers: { to: 'Friend Four', from: 'Cal', details: 'She laughs at her own jokes.' } }, cal)).json.card;
+    c = await open({ who: 'google:cal' }); page = await c.page('/make?card=' + fourth.id); await sac(page); await page.waitForSelector('.convo'); await button('Skip').click(); await button('Write my carol').click();
+    await page.waitForSelector('.dialog .payrow', { timeout: 15000 }); s = await page.evaluate(function () { return { title: document.querySelector('.dialog h2').textContent, why: document.querySelector('.dialog .banner').textContent, buys: Array.from(document.querySelectorAll('.dialog .payrow button')).map(function (b) { return b.getAttribute('aria-label'); }), fin: document.querySelector('.dialog .final b').textContent }; });
+    assert.strictEqual(s.title, 'Carol credits'); assert(/You have drafted 3 carols for free. Buy a pack/.test(s.why), s.why); assert.deepStrictEqual(s.buys, ['Buy 1 carol for $4.99', 'Buy 5 carols for $14.99', 'Buy 10 carols for $24.99'], 'the three packs'); assert.strictEqual(s.fin, 'One-time purchase. Not refundable.');
+    await page.keyboard.press('Escape'); page = await c.page('/make'); await sac(page); await page.waitForSelector('.carol'); assert.strictEqual(await page.locator('.carol').count(), 4);
+    await page.fill('input[type=search]', 'four'); await until(page, function () { return document.querySelectorAll('.carol').length === 1; }, null, 8000, 'the search to find the draft'); assert(/For Friend Four/.test(await page.locator('.carol b').textContent()), 'a draft is listed by who it is for');
+    await page.getByRole('button', { name: 'Delete the draft For Friend Four' }).click(); await page.locator('.dialog').getByRole('button', { name: 'Delete it' }).click(); await until(page, function () { return !!document.querySelector('.empty'); }, null, 8000, 'the list without it');
+    assert.strictEqual((await cardsOf('google:cal')).length, 3, 'the draft is deleted'); await page.getByRole('button', { name: 'Drafts' }).click(); await page.fill('input[type=search]', ''); await until(page, function () { return document.querySelectorAll('.carol').length === 3; }, null, 8000, 'the drafts filter');
+    assert.deepStrictEqual(wrong(c, /status of 402/), [], c.errors.join('\n')); await c.ctx.close();
+    console.log('OK maker paths: the draft is made at the conversation\'s first answer; photos need the rights tick; a ' + (sips ? 'real HEIC' : 'PNG (no sips here to make a HEIC)') + ' is added; the refusal bubble and its way forward; who it is for edited in its one panel; reorder by arrow and by drag; a photo moved and zoomed in its frame and one marked "one person"; "Update the video" offered from the server\'s word on a page with nothing remembered; two takes and switching; the email form; take down and put back; delete (page 404, storage empty); the 402 pay sheet with the three packs; drafts searched, filtered and deleted from the list');
+  }
+
   // ---- the card: opened by taps, its end, and nothing of the maker's ----
   if (pending('card.html') || pending('card.js')) console.log('PENDING card.html (the present, the end screen)');
   else {
@@ -223,7 +319,7 @@ const wrong = function (c, allow) { return c.errors.filter(function (e) { return
     assert(new RegExp('^/' + ready.slug + '/(story|square)\\.mp4\\?').test(end.saves) && /dl=1/.test(end.saves), 'save is the video, as a download: ' + end.saves);
     const whole = (await page.content()) + JSON.stringify((await T.call('GET', '/api/card/' + ready.slug)).json) + (await T.call('GET', '/' + ready.slug)).text;
     assert(whole.indexOf('ann@example.test') < 0 && whole.indexOf('Ann Example') < 0 && whole.indexOf('google:ann') < 0, 'the page, what it is sent and what it asks for never hold the maker\'s address, account name or id');
-    assert(whole.indexOf('Grandma June') > 0 && whole.indexOf('The Timmermans') > 0, 'only who it is to and who it says it is from');
+    assert(whole.indexOf('Grandma Dot') > 0 && whole.indexOf('The Hollisters') > 0, 'only who it is to and who it says it is from');
     assert.deepStrictEqual(wrong(c), [], c.errors.join('\n')); await c.ctx.close();
     console.log('OK card: the present is opened by taps (counted once, and the reload is held while it plays); the end shows save, share and make your own; the maker\'s email is nowhere in the page or its data');
   }

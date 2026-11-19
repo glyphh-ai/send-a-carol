@@ -106,7 +106,7 @@ async function open(name, more) {
   // a whole carol, made the way a maker would: draft, photos, the agent's words, the song, the video. -> its view
   T.carol = async function (who, o) {
     o = o || {}; const tpl = o.template || require('../templates.js').list[0].id;
-    let r = await T.call('POST', '/api/cards', { template: tpl, answers: Object.assign({ to: 'Grandma June', from: 'The Timmermans', relation: 'grandparents', details: 'Biscuit the dog ate the gingerbread house. Theo lost his first tooth.' }, o.answers) }, who); if (r.status !== 200) throw new Error('card: ' + r.text);
+    let r = await T.call('POST', '/api/cards', { template: tpl, answers: Object.assign({ to: 'Grandma Dot', from: 'The Hollisters', relation: 'grandparents', details: 'Waffles the dog ate the gingerbread house. Milo lost his first tooth.' }, o.answers) }, who); if (r.status !== 200) throw new Error('card: ' + r.text);
     const id = r.json.card.id;
     for (let i = 0; i < (o.photos === undefined ? 2 : o.photos); i++) { r = await T.call('POST', '/api/cards/' + id + '/photos', photo(i + 1 + (o.seed || 0), 600, 800), Object.assign({ 'content-type': 'image/png' }, who)); if (r.status !== 200) throw new Error('photo: ' + r.text); }
     r = await T.call('POST', '/api/cards/' + id + '/write', {}, who); if (r.status !== 200 || !r.json.ok) throw new Error('write: ' + r.text);

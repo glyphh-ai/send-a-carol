@@ -17,7 +17,7 @@
 
   // ----- words a live preview sings before anybody has written anything (per occasion) -----
   const SAMPLE = {
-    christmas: { to: 'Grandma June', from: 'The Parkers', title: 'A Carol for Grandma June', greeting: 'Merry Christmas, Grandma!', signoff: 'Love, the Parkers', lines: ['The lights are up along the street tonight', 'And Biscuit ate the gingerbread again', 'We saved your seat beside the fire', 'So here is a carol, sung for you'] },
+    christmas: { to: 'Grandma Dot', from: 'The Hollisters', title: 'A Carol for Grandma Dot', greeting: 'Merry Christmas, Grandma!', signoff: 'Love, the Hollisters', lines: ['The lights are up along the street tonight', 'And Waffles ate the gingerbread again', 'We saved your seat beside the fire', 'So here is a carol, sung for you'] },
     birthday: { to: 'Maya', from: 'Dad', title: 'Maya Turns Nine', greeting: 'Happy birthday, Maya!', signoff: 'Love, Dad', lines: ['Nine whole years of cartwheels in the hall', 'You lost a tooth and won the spelling bee', 'Blow the candles, make it loud', 'This one is your birthday carol'] },
     love: { to: 'Sam', from: 'Ada', title: 'Still You, Sam', greeting: 'For you, Sam', signoff: 'Yours, Ada', lines: ['You burned the toast the day we met', 'And I have loved you ever since', 'Every road trip, every rainy day', 'This little carol is all yours'] },
     thanks: { to: 'Ms. Okafor', from: 'Room 12', title: 'Thank You, Ms. Okafor', greeting: 'Thank you!', signoff: 'From all of Room 12', lines: ['You stayed late and you made it fun', 'You knew our names by day one', 'For every gold star on the wall', 'Here is a carol from us all'] },

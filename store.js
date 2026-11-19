@@ -9,7 +9,10 @@
 const crypto = require('crypto'), https = require('https'), fs = require('fs'), path = require('path'), { Readable } = require('stream');
 
 const ALG = 'AWS4-HMAC-SHA256', EMPTY = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
-const NAMES = ['R2_ENDPOINT', 'R2_BUCKET', 'R2_PREFIX', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'];
+// The settings (plain config: any S3-compatible bucket; nothing but keys is ever written to the database, so moving
+// to another bucket is a copy of the objects and a change of these): R2_ENDPOINT, R2_BUCKET, R2_ACCESS_KEY_ID,
+// R2_SECRET_ACCESS_KEY, and optionally R2_REGION ("auto" for R2) and R2_PREFIX (the app's own folder by default).
+const NAMES = ['R2_ENDPOINT', 'R2_BUCKET', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'];
 const KEY = /^[A-Za-z0-9][A-Za-z0-9_-]*(?:\.[A-Za-z0-9]+)*(?:\/[A-Za-z0-9][A-Za-z0-9_-]*(?:\.[A-Za-z0-9]+)*)*$/;
 const TYPES = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', mp4: 'video/mp4', mp3: 'audio/mpeg', m4a: 'audio/mp4', json: 'application/json' };
 const sha = function (s) { return crypto.createHash('sha256').update(s).digest('hex'); }, hmac = function (k, s) { return crypto.createHmac('sha256', k).update(s).digest(); };
@@ -23,11 +26,13 @@ function sign(q) {
   Object.keys(q.headers || {}).forEach(function (k) { headers[k.toLowerCase()] = String(q.headers[k]).trim().replace(/\s+/g, ' '); });
   headers['x-amz-date'] = amz; headers['x-amz-content-sha256'] = q.payload;
   const names = Object.keys(headers).sort(), signed = names.join(';'), p = q.path.split('/').map(enc).join('/');
-  const canonical = [q.method, p, '', names.map(function (n) { return n + ':' + headers[n] + '\n'; }).join(''), signed, q.payload].join('\n');
+  // (a query, as { name: value }: names sorted, both sides encoded the SigV4 way; the same string goes on the wire)
+  const query = Object.keys(q.query || {}).sort().map(function (k) { return enc(k) + '=' + enc(String(q.query[k])); }).join('&');
+  const canonical = [q.method, p, query, names.map(function (n) { return n + ':' + headers[n] + '\n'; }).join(''), signed, q.payload].join('\n');
   const toSign = [ALG, amz, scope, sha(canonical)].join('\n');
   const signature = hmac(hmac(hmac(hmac(hmac('AWS4' + q.secret, day), q.region), q.service), 'aws4_request'), toSign).toString('hex');
   headers.authorization = ALG + ' Credential=' + q.id + '/' + scope + ', SignedHeaders=' + signed + ', Signature=' + signature;
-  return { headers: headers, path: p, signature: signature };
+  return { headers: headers, path: p, query: query, signature: signature };
 }
 function wire(q) {
   return new Promise(function (done, fail) {
@@ -44,15 +49,18 @@ function Store(d) {
   function setup(env) {
     const got = NAMES.filter(function (k) { return env[k]; }), dir = path.join(d.dir, 'store');
     // (R2_PREFIX alone, or only the two key halves, is not a try at R2: a laptop's .env often has just those)
-    if (!env.R2_ENDPOINT && !env.R2_BUCKET) return (cf = { remote: false, broken: '', prefix: d.prefix, dir: dir });
+    // ON THE LIVE MACHINE (d.production) there is no folder to fall back to: its disk is thrown away at every
+    // start. With no storage settings there, storage is OFF: every call refuses, and the app says so in a sentence.
+    if (!env.R2_ENDPOINT && !env.R2_BUCKET) return (cf = d.production ? { remote: true, off: true, broken: 'the storage settings are not set (no ' + NAMES.join(', ') + ')', prefix: '' } : { remote: false, broken: '', prefix: d.prefix, dir: dir });
     cf = { remote: true, broken: '', prefix: '' };
-    if (got.length < 5) return Object.assign(cf, { broken: 'not every R2 setting is there (missing: ' + NAMES.filter(function (k) { return !env[k]; }).join(', ') + ')' });
+    if (got.length < NAMES.length) return Object.assign(cf, { broken: 'not every storage setting is there (missing: ' + NAMES.filter(function (k) { return !env[k]; }).join(', ') + ')' });
     let u = null; try { u = new URL(env.R2_ENDPOINT); } catch (e) { u = null; }
-    const prefix = String(env.R2_PREFIX).replace(/\/+$/, '') + '/';
+    const prefix = String(env.R2_PREFIX || d.prefix).replace(/\/+$/, '') + '/';   // (R2_PREFIX is optional: the app's own folder by default)
     if (!u || u.protocol !== 'https:' || (u.pathname !== '/' && u.pathname !== '') || u.search || u.username) return Object.assign(cf, { broken: 'R2_ENDPOINT must be https://<account>.r2.cloudflarestorage.com and nothing after it' });
     if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(env.R2_BUCKET)) return Object.assign(cf, { broken: 'R2_BUCKET is not a bucket\'s name' });
     if (!KEY.test(prefix.slice(0, -1)) || prefix.indexOf('..') >= 0) return Object.assign(cf, { broken: 'R2_PREFIX must be a plain folder name' });
-    return Object.assign(cf, { endpoint: u.origin, host: u.host, bucket: env.R2_BUCKET, prefix: prefix, id: env.R2_ACCESS_KEY_ID, secret: env.R2_SECRET_ACCESS_KEY });
+    if (env.R2_REGION && !/^[a-z0-9-]{2,30}$/.test(env.R2_REGION)) return Object.assign(cf, { broken: 'R2_REGION is not a region\'s name' });
+    return Object.assign(cf, { endpoint: u.origin, host: u.host, bucket: env.R2_BUCKET, region: env.R2_REGION || 'auto', prefix: prefix, id: env.R2_ACCESS_KEY_ID, secret: env.R2_SECRET_ACCESS_KEY });
   }
   setup(d.env || {});
   function full(key) {
@@ -63,7 +71,7 @@ function Store(d) {
   const typeOf = function (key) { return TYPES[key.split('.').pop().toLowerCase()] || 'application/octet-stream'; };
   async function ask(method, key, o) {
     const name = full(key), p = '/' + cf.bucket + '/' + name;
-    const s = sign({ method: method, host: cf.host, path: p, headers: o && o.headers, payload: o && o.payload || EMPTY, region: 'auto', service: 's3', id: cf.id, secret: cf.secret, at: seam.now() });
+    const s = sign({ method: method, host: cf.host, path: p, headers: o && o.headers, payload: o && o.payload || EMPTY, region: cf.region, service: 's3', id: cf.id, secret: cf.secret, at: seam.now() });
     return seam.transport({ method: method, url: cf.endpoint + s.path, headers: Object.assign(s.headers, o && o.plain), body: o && o.body || null });
   }
   async function put(key, body, type) {
@@ -105,7 +113,30 @@ function Store(d) {
     try { fs.unlinkSync(path.join(cf.dir, full(key))); } catch (e) { if (e.code !== 'ENOENT') throw e; }
     return true;
   }
-  return { put: put, get: get, read: read, del: del, exists: exists, setup: setup, seam: seam, typeOf: typeOf,
+  // list(under) -> [{ key, size }] : the keys under one of THIS APP's folders (never the bucket: the prefix is always
+  // the adapter's own, and `under` is a key like any other). For the admin's checks and the tools; the app itself
+  // deletes by the keys in its database. R2: ListObjectsV2, page by page.
+  const unxml = function (s) { return s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&'); };
+  async function list(under) {
+    under = String(under || '').replace(/\/+$/, '');   // ('' = everything under the app's own prefix)
+    const name = under ? full(under) + '/' : full('x').slice(0, -1), out = [];
+    if (cf.remote) {
+      let token = '';
+      for (let page = 0; page < 50; page++) {
+        const query = { 'list-type': '2', prefix: name, 'max-keys': '1000' }; if (token) query['continuation-token'] = token;
+        const s = sign({ method: 'GET', host: cf.host, path: '/' + cf.bucket, query: query, payload: EMPTY, region: cf.region, service: 's3', id: cf.id, secret: cf.secret, at: seam.now() });
+        const r = await seam.transport({ method: 'GET', url: cf.endpoint + s.path + '?' + s.query, headers: s.headers, body: null }), xml = (await drain(r.body)).toString('utf8');
+        if (r.status !== 200) throw oops('LIST answered ' + r.status, r.status);
+        xml.replace(/<Contents>([\s\S]*?)<\/Contents>/g, function (m, c) { const k = /<Key>([\s\S]*?)<\/Key>/.exec(c), z = /<Size>(\d+)<\/Size>/.exec(c); if (k) { const key = unxml(k[1]); if (key.indexOf(name) === 0) out.push({ key: key.slice(cf.prefix.length), size: z ? +z[1] : 0 }); } return m; });
+        const next = /<NextContinuationToken>([\s\S]*?)<\/NextContinuationToken>/.exec(xml);
+        if (!/<IsTruncated>true<\/IsTruncated>/.test(xml) || !next) break; token = unxml(next[1]);
+      }
+      return out;
+    }
+    const walk = function (dir) { let names = []; try { names = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return; } names.forEach(function (d2) { const f = path.join(dir, d2.name); if (d2.isDirectory()) walk(f); else if (!/\.part$/.test(d2.name)) out.push({ key: path.relative(path.join(cf.dir, cf.prefix), f).split(path.sep).join('/'), size: fs.statSync(f).size }); }); };
+    walk(path.join(cf.dir, name)); return out.sort(function (a, b) { return a.key < b.key ? -1 : 1; });
+  }
+  return { put: put, get: get, read: read, del: del, exists: exists, list: list, setup: setup, seam: seam, typeOf: typeOf,
     remote: function () { return cf.remote; }, broken: function () { return cf.broken; }, prefix: function () { return cf.prefix; }, where: function () { return cf.remote ? 'R2 bucket ' + cf.bucket + ', prefix ' + cf.prefix : 'a folder on this disk (' + cf.dir + ')'; } };
 }
 module.exports = Store; module.exports.sign = sign; module.exports.KEY = KEY;
