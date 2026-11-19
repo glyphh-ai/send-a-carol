@@ -1,0 +1,17 @@
+{
+  "what": "a draft: the maker's answers, no words yet",
+  "captured": {
+    "doc_v": 1,
+    "on": "2026-11-19"
+  },
+  "row": {
+    "template": "cozy-mantel",
+    "occasion": "christmas",
+    "state": "draft",
+    "title": "",
+    "v": 1,
+    "doc": "{\"v\":1,\"answers\":{\"to\":\"Sam\",\"from\":\"Ada\",\"details\":\"Sam bakes bread every Sunday.\"},\"script\":null}"
+  },
+  "photos": [],
+  "scenes": 0
+}

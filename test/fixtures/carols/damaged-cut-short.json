@@ -1,0 +1,18 @@
+{
+  "what": "a damaged row (written by hand): the saved text was cut short and is not JSON any more. It opens as an empty draft and can be written again",
+  "captured": {
+    "doc_v": 1,
+    "on": "2026-11-19"
+  },
+  "odd": true,
+  "row": {
+    "template": "cozy-mantel",
+    "occasion": "christmas",
+    "state": "draft",
+    "title": "A Carol for Grandma June",
+    "v": 1,
+    "doc": "{\"v\":1,\"answers\":{\"to\":\"Grandma June\",\"from\":\"The Timm"
+  },
+  "photos": [],
+  "scenes": 0
+}

@@ -1,0 +1,29 @@
+{
+  "what": "as an older build might have kept one (written by hand, not captured): no version, fields this build does not know (mood, answers.pet, script.bridge), a section that is not one, a scene whose photo is gone and a scene that is nothing",
+  "captured": {
+    "doc_v": 0,
+    "on": "2026-11-19"
+  },
+  "odd": true,
+  "row": {
+    "template": "cozy-mantel",
+    "occasion": "christmas",
+    "state": "draft",
+    "title": "For Opa",
+    "v": null,
+    "doc": "{\"mood\":\"silly\",\"answers\":{\"to\":\"Opa\",\"from\":\"Mila\",\"pet\":\"Biscuit\"},\"script\":{\"title\":\"For Opa\",\"signoff\":\"Love, Mila\",\"bridge\":[\"La la la\"],\"lyrics\":[{\"section\":\"verse\",\"lines\":[\"Opa has a boat\",\"It does not float\"]},null,{\"section\":\"outro\",\"lines\":[\"Goodbye, goodbye\"]}],\"scenes\":[{\"pid\":\"pGONE00001\",\"caption\":\"A photo that was deleted\"},null,{\"pid\":\"pKEPT00001\"}]}}"
+  },
+  "photos": [
+    "pKEPT00001"
+  ],
+  "scenes": 1,
+  "keeps": {
+    "mood": "silly",
+    "answers.pet": "Biscuit",
+    "answers.to": "Opa",
+    "script.bridge": [
+      "La la la"
+    ],
+    "script.signoff": "Love, Mila"
+  }
+}

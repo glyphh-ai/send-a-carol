@@ -1,0 +1,65 @@
+{
+ "note": "Made by tools/proof.cjs with made-up people and code-drawn placeholder photos.",
+ "examples": [
+  {
+   "slug": "the-timmermans-2026",
+   "title": "Grandma June's Christmas News",
+   "occasion": "christmas",
+   "template": "cozy-mantel",
+   "to": "Grandma June",
+   "from": "The Timmermans",
+   "lyrics": [
+    "Biscuit ate the gingerbread house, roof and all,",
+    "Theo lost his first tooth, left a gap so small,",
+    "Ada's bike lost its training wheels, off she flew,",
+    "Grandma June, we saved up all this news for you.",
+    "Merry Christmas, Grandma June, we love you so,",
+    "And we miss your cinnamon rolls, you know,",
+    "From the Timmermans with love and mistletoe,",
+    "Merry Christmas, Grandma June, we love you so."
+   ],
+   "poster": "/examples/the-timmermans-2026.jpg",
+   "video": "/examples/the-timmermans-2026.mp4"
+  },
+  {
+   "slug": "for-uncle-dave",
+   "title": "Undefeated Uncle Dave",
+   "occasion": "christmas",
+   "template": "ugly-sweater-party",
+   "to": "Uncle Dave",
+   "from": "Maya and Jo",
+   "lyrics": [
+    "Uncle Dave, your reindeer's back,",
+    "Same old sweater since ninety-eight,",
+    "Every turkey charcoal black,",
+    "You call it 'caramelised' on the plate!",
+    "Shout it loud for Uncle Dave,",
+    "Undefeated at charades!",
+    "Sweater's tired, the turkey's charred,",
+    "But you're the best uncle by far!"
+   ],
+   "poster": "/examples/for-uncle-dave.jpg",
+   "video": "/examples/for-uncle-dave.mp4"
+  },
+  {
+   "slug": "nora-is-thirty",
+   "title": "Nora Turns Thirty",
+   "occasion": "birthday",
+   "template": "birthday-bash",
+   "to": "Nora",
+   "from": "Sam",
+   "lyrics": [
+    "Up at six and running through the rain,",
+    "Clint the starter rising once again,",
+    "You said you hate surprises, and it's true,",
+    "But this one's the exception, made for you!",
+    "Nora! Nora! Thirty and you shine,",
+    "Lucky me, I get to call you mine,",
+    "Nora! Nora! Light the candles bright,",
+    "Thirty years and you're the party's light!"
+   ],
+   "poster": "/examples/nora-is-thirty.jpg",
+   "video": "/examples/nora-is-thirty.mp4"
+  }
+ ]
+}

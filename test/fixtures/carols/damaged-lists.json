@@ -1,0 +1,26 @@
+{
+  "what": "a damaged row (written by hand): the answers are a list, the lyrics are a string and the scenes are not a list; a field from a later build is beside them",
+  "captured": {
+    "doc_v": 1,
+    "on": "2026-11-19"
+  },
+  "odd": true,
+  "row": {
+    "template": "cozy-mantel",
+    "occasion": "christmas",
+    "state": "draft",
+    "title": "",
+    "v": 1,
+    "doc": "{\"v\":7,\"later\":{\"stickers\":[\"star\"]},\"answers\":[\"Sam\"],\"script\":{\"title\":\"Half a carol\",\"lyrics\":\"la la la\",\"scenes\":{\"pid\":\"p1\"}}}"
+  },
+  "photos": [],
+  "scenes": 0,
+  "keeps": {
+    "later": {
+      "stickers": [
+        "star"
+      ]
+    },
+    "script.title": "Half a carol"
+  }
+}

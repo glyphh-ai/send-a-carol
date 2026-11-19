@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en" data-season="none">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{name}}: singing greeting cards for any occasion</title>
+<meta name="description" content="{{tagline}} Tell our agent who it is for, add a few photos, and get an original song with their name in it, set to a little video you can send as a link. Birthdays, thank yous, love, congratulations, holidays.">
+<link rel="canonical" href="{{site}}/">
+<meta name="theme-color" content="#1d1230">
+<meta property="og:site_name" content="{{name}}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{site}}/">
+<meta property="og:title" content="{{name}}: singing greeting cards for any occasion">
+<meta property="og:description" content="{{tagline}} An original song with their name in it, set to a little video. Made in minutes, sent as a link.">
+<meta property="og:image" content="{{site}}/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{name}}: singing greeting cards for any occasion">
+<meta name="twitter:description" content="{{tagline}} An original song with their name in it, set to a little video.">
+<meta name="twitter:image" content="{{site}}/assets/og.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="site">
+<canvas id="ambient" aria-hidden="true"></canvas>
+
+<header class="site-head on-dark" id="head">
+  <div class="wrap">
+    <a class="brand-link" href="/" aria-label="{{name}}: home">{{brand}}</a>
+    <nav id="nav" aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#templates">Templates</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn sm" href="/make">Make a carol</a>
+    <button class="icon-btn menu-btn" id="menu" aria-label="Menu" aria-expanded="false" aria-controls="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+  </div>
+</header>
+
+<main>
+<section class="hero" id="top">
+  <div class="wrap">
+    <div class="hero-copy">
+      <span class="season-pill" id="season" hidden><i></i><span></span></span>
+      <h1>The greeting card that <em>sings about them</em>.</h1>
+      <p class="tagline">{{tagline}}</p>
+      <p class="lede">Tell our agent who it is for and add a few photos. Minutes later you have a carol: an original song with their name in it, set to a little video, that says <span class="says" id="says"><span>Happy birthday</span></span></p>
+      <div class="cta">
+        <a class="btn big" href="/make">Make a carol</a>
+        <a class="btn big ghost on-dark" href="#templates">See the templates</a>
+      </div>
+      <p class="fine" id="herofine">Writing it with the agent is free to try. You pay only when you want it sung.</p>
+    </div>
+    <div class="player" id="player" aria-label="Example cards">
+      <canvas class="float n1" id="float1" width="156" height="156" aria-hidden="true"></canvas>
+      <canvas class="float n2" id="float2" width="172" height="172" aria-hidden="true"></canvas>
+      <div class="phone"><div class="screen" id="slides"><div class="skel" style="position:absolute;inset:0;border-radius:0;opacity:.15"></div></div></div>
+      <div class="dotsnav" id="pdots" role="group" aria-label="Choose an example"></div>
+      <div class="cap" id="pcap" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec first" id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">How it works</span>
+      <h2>Three little steps, one very big smile.</h2>
+      <p>We call the song a carol, whatever the occasion: a birthday in July, a thank you in March, a love song on a Tuesday.</p>
+    </div>
+    <div class="steps">
+      <article class="card step"><canvas data-art="tell" aria-hidden="true"></canvas><h3>Say who it is for</h3><p>Chat with the agent: their name, what they mean to you, a few true details (the dog, the inside joke, this year's big moment). Add photos if you like.</p></article>
+      <article class="card step"><canvas data-art="sing" aria-hidden="true"></canvas><h3>It is written, then sung</h3><p>The agent writes the carol in a couple of minutes. Change any line you want, then have it sung and set to a video with your photos dancing along.</p></article>
+      <article class="card step"><canvas data-art="send" aria-hidden="true"></canvas><h3>Send the link or the video</h3><p>Your card gets its own page at {{domain}}/your-name. Text the link, post the video, or email it straight from here.</p></article>
+    </div>
+  </div>
+</section>
+
+<section class="sec alt" id="templates">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Templates</span>
+      <h2>Pick a look. The music follows.</h2>
+      <p>Every template is a little animated world with its own sound. They are drawn live right here: hover or tap one to see it move.</p>
+    </div>
+    <div class="chips scroll" id="occs" role="group" aria-label="Occasion"></div>
+    <div class="soon-row" id="soon" hidden></div>
+    <div class="tools">
+      <label class="search"><span class="sr">Search templates</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.500-3.500"/></svg><input class="input" id="tq" type="search" placeholder="Search: cozy, funny, kids, retro..." autocomplete="off"></label>
+      <label><span class="sr">Style</span><select class="input" id="tfam"><option value="">All styles</option></select></label>
+    </div>
+    <div class="tpl-grid" id="tgrid" aria-live="polite"></div>
+    <div class="pager" id="tpager" hidden></div>
+  </div>
+</section>
+
+<section class="sec tint" id="pricing">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Pricing</span>
+      <h2>Pay per carol. That is the whole plan.</h2>
+      <p>Buy one, or a few for the year's birthdays. Credits wait for you until you use them, and there is nothing to cancel.</p>
+    </div>
+    <div class="packs" id="packs"><div class="skel" style="height:260px"></div></div>
+    <div class="card includes">
+      <div>
+        <h3>One credit makes one whole carol</h3>
+        <ul style="margin-top:14px">
+          <li>The song, sung for you, with up to <b data-v="limits.takes">a few</b> takes to choose from</li>
+          <li>The video in two shapes: tall for stories and reels, square for feeds and email</li>
+          <li>The card's own page at {{domain}}/your-name, with your photos and the words</li>
+          <li>Sending it by email from here, to up to <b data-v="limits.recipients">several</b> people</li>
+        </ul>
+      </div>
+      <p class="free-note"><b>Free to try.</b> Write with the agent and watch the live preview before you pay anything: your first <b data-v="limits.freeDrafts">few</b> drafts are on us.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec last" id="faq">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Questions</span>
+      <h2>Good to know before you sing.</h2>
+    </div>
+    <div class="faq">
+      <details><summary>How long does it take?</summary><div><p>A couple of minutes to write it with the agent, then a few minutes for the song to be sung and the video to be made. You can close the page while it works: it will be waiting for you.</p></div></details>
+      <details><summary>What do I get?</summary><div><p>A link like {{domain}}/your-name that plays your card for anyone you send it to. A video file in two shapes (tall for stories and reels, square for feeds and email). And a poster image for previews.</p></div></details>
+      <details><summary>How do I share it?</summary><div><p>Any way you like. Copy the link into a text or a chat, download the video and post it, or email it from here to the people you choose.</p></div></details>
+      <details><summary>What happens to my photos?</summary><div><p>They are stored privately and used only to make your card. Delete a photo, or the whole carol, any time and they are removed. <a href="/legal/photos">More about photos</a>.</p></div></details>
+      <details><summary>Can I write my own words?</summary><div><p>Yes. Give the agent your own lyrics or one line that must be in the song, and edit every line of what it writes before it is sung.</p></div></details>
+      <details><summary>Is there anything it will not write?</summary><div><p>It writes kind things. It will not write anything unkind or sexual about someone, and it will not copy a copyrighted song: every carol is an original.</p></div></details>
+      <details><summary>Can I get my money back?</summary><div><p>{{finalsale}} Writing and previewing are free, so you can be sure you love it before you buy. <a href="/legal/refunds">Read the policy</a>.</p></div></details>
+      <details><summary>Is it only for holidays?</summary><div><p>Not at all. A carol is our word for the song, for any occasion: birthdays, thank yous, love, congratulations, the holidays, or no reason at all.</p></div></details>
+    </div>
+  </div>
+</section>
+
+<section class="closing">
+  <div class="wrap">
+    <h2>Somebody is about to feel very loved.</h2>
+    <p>Start with their name. The agent takes it from there.</p>
+    <a class="btn big gold" href="/make">Make a carol</a>
+  </div>
+</section>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <div style="display:grid;gap:14px">
+      {{brand}}
+      <nav aria-label="Legal">
+        <a href="/legal/terms">Terms</a>
+        <a href="/legal/privacy">Privacy</a>
+        <a href="/legal/refunds">Refunds</a>
+        <a href="/legal/acceptable-use">Acceptable use</a>
+        <a href="/legal/photos">Photos</a>
+        <a href="mailto:{{support}}">{{support}}</a>
+      </nav>
+    </div>
+    <span class="glyphh-mark">a <img src="/assets/glyphh-logo-black.png" width="48" height="16" alt="Glyphh"> game</span>
+  </div>
+</footer>
+
+<script src="/art.js"></script>
+<script src="/templates.js"></script>
+<script src="/engine.js"></script>
+<script src="/fonts.js"></script>
+<script src="/net.js"></script>
+<script src="/landing.js"></script>
+</body>
+</html>

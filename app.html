@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en" data-season="none">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Make a carol · {{name}}</title>
+<meta name="description" content="{{tagline}} Make a singing card with the agent: it writes the carol, it is sung, and you send the link.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#1d1230">
+<meta property="og:site_name" content="{{name}}">
+<meta property="og:title" content="Make a carol · {{name}}">
+<meta property="og:description" content="{{tagline}}">
+<meta property="og:image" content="{{site}}/assets/og.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="app" data-stage="dark">
+<canvas id="ambient" aria-hidden="true"></canvas>
+
+<header class="app-head on-dark">
+  <div class="in">
+    <a class="brand-link" id="homelink" href="/make" aria-label="{{name}}: my carols">{{brand}}</a>
+    <span class="sp"></span>
+    <button class="credits" id="credits" hidden aria-label="Carol credits"><i aria-hidden="true">&#9834;</i><span></span></button>
+    <button class="avatar-btn" id="acct" hidden aria-haspopup="true" aria-expanded="false" aria-label="Account"></button>
+  </div>
+</header>
+
+<main id="main" aria-live="polite">
+  <div class="center-screen"><div class="loading" style="color:#d9c9e6"><div class="spin" style="border-color:rgba(255,255,255,.2);border-top-color:#f2b632"></div><span>Tuning up...</span></div></div>
+</main>
+
+<noscript><p style="padding:40px 20px;text-align:center;color:#fff8ee">Making a carol needs JavaScript. Please turn it on and reload.</p></noscript>
+<template id="mark">{{mark}}</template>
+
+<script src="/art.js"></script>
+<script src="/templates.js"></script>
+<script src="/engine.js"></script>
+<script src="/fonts.js"></script>
+<script src="/net.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

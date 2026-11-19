@@ -1,0 +1,14 @@
+{
+  "name": "send-a-carol",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node legal/test.cjs && node test/templates.cjs && node test/beat.cjs && node test/server.cjs && node test/money.cjs && node test/admin.cjs && node test/safe.cjs && node test/contract.cjs && node test/browser.cjs",
+    "check": "node server.js --check"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.10.0",
+    "@napi-rs/canvas": "^1.1.1",
+    "pg": "^8.23.1"
+  }
+}

@@ -1,0 +1,58 @@
+app = "send-a-carol"
+primary_region = "dfw"
+
+# A deploy (and a restart) sends SIGTERM and waits this long. The server stops taking new jobs; a video that is
+# being made is stopped where it is, stays in the database as it was, and is put back in the queue when the next
+# machine starts (server.js, requeue). The song it had already paid for is kept and is not asked for again.
+kill_signal = "SIGTERM"
+kill_timeout = "30s"
+
+# No volume. Everything that must outlive a machine is somewhere else: the database is Postgres, through the secret
+# DATABASE_URL, and photos, songs and videos are in R2 (the R2_* secrets). A machine's own disk is thrown away at
+# every deploy, which is why "node server.js --check" refuses a machine with no DATABASE_URL or no R2 settings.
+# Every secret is listed by NAME in SPEC.md (and at the top of server.js); no value is ever written in this repo.
+[env]
+  PUBLIC_URL = "https://sendacarol.com"
+
+# Before a deploy replaces the running machine, Fly runs this in a machine of its own, built from the new image,
+# with the app's secrets: the settings a machine needs, the schema, every table and statement, every saved carol,
+# against the real database (server.js, check()). It binds no port, asks the network for nothing and changes no
+# row. Anything but exit 0 stops the deploy, and the machine that was running keeps running the build before.
+# Deploy with ./deploy.sh (SPEC.md, "Safe builds").
+[deploy]
+  release_command = "node server.js --check"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # ALWAYS ON, one machine. Songs and videos are made in the background, after the maker's request has been
+  # answered and often after they have closed the tab: a machine that stops when no request is coming through the
+  # proxy would stop in the middle of a video somebody paid for. So it is never stopped for being quiet.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  # 200 only when the database answers. It tells a deploy that the new machine is really up, and takes a machine
+  # that has lost its database out of the way of requests.
+  [[http_service.checks]]
+    method = "GET"
+    path = "/healthz"
+    grace_period = "15s"
+    interval = "30s"
+    timeout = "5s"
+
+# PROPOSED, not yet created: performance-2x (2 dedicated CPUs) with 4 GB.
+# Why: a carol's video is drawn frame by frame (1080x1920 and 1080x1080, 30 a second, up to 40 seconds) and encoded
+# with x264, and both are bound by the CPU. Measured on the dev Mac: about 30 seconds of wall time for a 30-second
+# video in both sizes, using several cores. Shared CPUs are throttled under sustained load (they are meant for
+# bursts), and a render is nothing but sustained load: on them the same video would take minutes, with the maker
+# watching a progress bar. Memory: a render holds two 1080p canvases (about 8 MB a frame, with frames waiting in
+# the pipe) plus ffmpeg's encoder, a few hundred MB together, beside the server itself; 4 GB leaves room.
+# The cheaper choice: shared-cpu-4x with 2 GB (size = "shared-cpu-4x", memory = "2gb"). It works, and is slower
+# and uneven; fine while there are few carols a day.
+# Either way config.limits.jobsAtOnce stays 1 for a machine: two renders at once on two CPUs each take twice as
+# long. And it stays ONE machine for now: a start puts every job marked running back in the queue (server.js,
+# requeue), which is right for one machine and would take a second machine's work from under it.
+[[vm]]
+  size = "performance-2x"
+  memory = "4gb"
