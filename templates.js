@@ -373,7 +373,14 @@
   CarolTemplates.list = list;
   var byId = {};
   list.forEach(function (t) { byId[t.id] = t; });
-  CarolTemplates.get = function (id) { return byId[id] || null; };
+  /* THE LIBRARY (library/): thousands more templates, made from blocks by recipes. They are not in this file and not in
+     `list` (the 33 above are the launch set and stay as they are). The server resolves a library id through
+     `resolve` (library/index.js sets it); a page is handed the definitions it needs by the API and keeps them with
+     `add`. A definition carries its version `v`: get(id, v) answers that version while it is known. */
+  var extra = {};
+  CarolTemplates.resolve = null;
+  CarolTemplates.add = function (t) { if (!t || !t.id || byId[t.id]) return null; extra[t.id + '@' + (t.v || 1)] = t; if (!extra[t.id] || (extra[t.id].v || 1) <= (t.v || 1)) extra[t.id] = t; return t; };
+  CarolTemplates.get = function (id, v) { return byId[id] || (v && extra[id + '@' + v]) || (CarolTemplates.resolve && CarolTemplates.resolve(id, v)) || extra[id] || null; };
   /* search({ q, occasion, family, page, per }) -> { items, total, page, pages } : every word of q must match somewhere */
   CarolTemplates.search = function (o) {
     o = o || {};

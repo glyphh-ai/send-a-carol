@@ -1,0 +1,47 @@
+'use strict';
+// library/settings/pattern-a.js : the settings drawn by art/pack-backdrops-pattern-a.js (pattern backdrops A). Ids are stable for ever.
+// A pattern takes every colour from the palette, so each variant suits light, mid and dark palettes alike; a variant here
+// is a different ARRANGEMENT of the pattern, not a time of day. All of them lay a floor at y = 0.705 for the cast.
+const ANY = ['light', 'mid', 'dark'];
+module.exports = [
+  { id: 'stripes', backdrop: 'stripes', kind: 'pattern', stage: 'band-low',
+    noun: 'Bold Stripes', bare: 'Stripes', place: 'in Bold Stripes', blurb: 'broad stripes with fine pinstripes: on the diagonal, under a scalloped shop awning, or sweet-shop candy stripes',
+    variants: [{ v: 'diagonal', label: '', mode: ANY }, { v: 'awning', label: 'Under the Awning', mode: ANY }, { v: 'candy', label: 'Candy-Striped', mode: ANY }],
+    tags: ['stripes', 'pattern', 'awning', 'candy', 'shop', 'classic', 'bold'], tones: ['funny', 'cute', 'retro', 'party', 'kids', 'modern', 'sporty'], sky: false },
+  { id: 'polka', backdrop: 'polka', kind: 'pattern', stage: 'band-low',
+    noun: 'Polka Dots', bare: 'Polka Dots', place: 'in Polka Dots', blurb: 'polka dots that swell on the beat: an even classic dot, party dots of every size, or hoops with bright pips',
+    variants: [{ v: 'classic', label: '', mode: ANY }, { v: 'scatter', label: 'Party Dots', mode: ANY }, { v: 'rings', label: 'Hoops and Pips', mode: ANY }],
+    tags: ['dots', 'polka', 'pattern', 'spots', 'retro', 'playful'], tones: ['cute', 'funny', 'retro', 'party', 'kids', 'heartfelt'], sky: false },
+  { id: 'terrazzo', backdrop: 'terrazzo', kind: 'pattern', stage: 'band-low',
+    noun: 'Terrazzo', bare: 'Terrazzo', place: 'on Terrazzo', blurb: 'speckled stone with a polished floor: fine chips, rounded pebbles, or big broken slabs set in pale grout',
+    variants: [{ v: 'chips', label: '', mode: ANY }, { v: 'pebble', label: 'Pebble', mode: ANY }, { v: 'paving', label: 'Mosaic', mode: ANY }],
+    tags: ['terrazzo', 'stone', 'speckle', 'mosaic', 'pattern', 'design', 'modern'], tones: ['modern', 'elegant', 'work', 'calm', 'party', 'funny'], sky: false },
+  { id: 'sunburst2', backdrop: 'sunburst2', kind: 'pattern', stage: 'band-low',
+    noun: 'the Sunburst', bare: 'Sunburst', place: 'in the Sunburst', blurb: 'rays fanning out from a gold sun: rising behind the floor, shining from the top corner, or turning as a slow pinwheel',
+    variants: [{ v: 'rise', label: 'at Sunrise', mode: ANY }, { v: 'corner', label: '', mode: ANY }, { v: 'swirl', label: 'Pinwheel', mode: ANY }],
+    tags: ['sunburst', 'rays', 'sun', 'pinwheel', 'retro', 'pattern', 'bright', 'morning'], tones: ['party', 'funny', 'retro', 'heartfelt', 'kids', 'sporty', 'faith'], sky: false },
+  { id: 'watercolor', backdrop: 'watercolor', kind: 'pattern', stage: 'band-low',
+    noun: 'Watercolour', bare: 'Watercolour', place: 'in Watercolour', blurb: 'wet paint on soft paper: a sky wash, colour blooming in from the corners, or broad dry-brush strokes, over a pooled wash of ground',
+    variants: [{ v: 'wash', label: '', mode: ANY }, { v: 'blooms', label: 'in Bloom', mode: ANY }, { v: 'strokes', label: 'Brush Strokes', mode: ANY }],
+    tags: ['watercolour', 'watercolor', 'paint', 'wash', 'soft', 'art', 'pattern', 'gentle'], tones: ['heartfelt', 'calm', 'elegant', 'romantic', 'restrained', 'faith', 'cute'], sky: false },
+  { id: 'mesh', backdrop: 'mesh', kind: 'pattern', stage: 'band-low',
+    noun: 'Soft Colour', bare: 'Soft Colour', place: 'in Soft Colour', blurb: 'slow-drifting blurs of colour over a glassy floor: corner to corner, a halo round a pale middle, or layered bands',
+    variants: [{ v: 'drift', label: '', mode: ANY }, { v: 'halo', label: 'Halo', mode: ANY }, { v: 'tide', label: 'Tide', mode: ANY }],
+    tags: ['gradient', 'mesh', 'blur', 'glow', 'soft', 'modern', 'pattern', 'abstract'], tones: ['modern', 'calm', 'elegant', 'romantic', 'work', 'restrained', 'heartfelt'], sky: false },
+  { id: 'artdecofan', backdrop: 'artdecofan', kind: 'pattern', stage: 'band-low',
+    noun: 'the Deco Fans', bare: 'Deco Fans', place: 'among the Deco Fans', blurb: 'gold-lined art deco fans over a dark polished floor: a wall of fan scales, or great fans in the corners between stepped pilasters',
+    variants: [{ v: 'scales', label: '', mode: ANY }, { v: 'grand', label: 'Grand Hall', mode: ANY }],
+    tags: ['art deco', 'fans', 'gold', 'twenties', 'glamour', 'pattern', 'gala', 'anniversary', 'new year'], tones: ['elegant', 'retro', 'party', 'romantic', 'work', 'musical'], sky: false },
+  { id: 'memphis', backdrop: 'memphis', kind: 'pattern', stage: 'band-low',
+    noun: 'the Eighties Shapes', bare: 'Eighties Shapes', place: 'among the Eighties Shapes', blurb: 'squiggles, triangles, dot grids and zigzags over a piano-key floor: tossed round the edges, in big colour blocks, or a wall of little worms',
+    variants: [{ v: 'scatter', label: '', mode: ANY }, { v: 'blocks', label: 'Colour Blocks', mode: ANY }, { v: 'squiggle', label: 'Squiggles', mode: ANY }],
+    tags: ['eighties', '80s', 'shapes', 'squiggle', 'zigzag', 'retro', 'pattern', 'pop', 'nineties'], tones: ['retro', 'funny', 'party', 'kids', 'modern', 'musical', 'sporty'], sky: false },
+  { id: 'gingham', backdrop: 'gingham', kind: 'pattern', stage: 'band-low',
+    noun: 'Gingham', bare: 'Gingham', place: 'on Gingham', blurb: 'woven check cloth with a stitched hem and ric-rac trim: the classic picnic check, cut on the bias, or a big bold buffalo check',
+    variants: [{ v: 'picnic', label: '', mode: ANY }, { v: 'bias', label: 'on the Bias', mode: ANY }, { v: 'buffalo', label: 'Buffalo Check', mode: ANY }],
+    tags: ['gingham', 'check', 'picnic', 'cloth', 'country', 'plaid', 'pattern', 'kitchen', 'homemade'], tones: ['cute', 'heartfelt', 'funny', 'retro', 'kids', 'calm'], sky: false, seasons: ['spring', 'summer', 'autumn'] },
+  { id: 'floralpattern', backdrop: 'floralpattern', kind: 'pattern', stage: 'band-low',
+    noun: 'the Florals', bare: 'Florals', place: 'among the Florals', blurb: 'flowers over a clipped hedge: a ditsy print of little blooms, vines climbing a trellis, or big bouquets in every corner',
+    variants: [{ v: 'ditsy', label: '', mode: ANY }, { v: 'trellis', label: 'on the Trellis', mode: ANY }, { v: 'bold', label: 'in Full Bloom', mode: ANY }],
+    tags: ['flowers', 'floral', 'blooms', 'trellis', 'garden', 'pattern', 'spring', 'mother', 'wedding'], tones: ['heartfelt', 'romantic', 'cute', 'elegant', 'calm', 'faith'], sky: false, seasons: ['spring', 'summer'] }
+];

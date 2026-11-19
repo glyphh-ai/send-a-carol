@@ -18,6 +18,9 @@ COPY server.js config.js store.js brand.js agent.js song.js beat.js render.js em
 # the pages and what they load (the build id is a hash of exactly these); the engine draws the video on the server too
 COPY landing.html app.html card.html admin.html art.js templates.js engine.js fonts.js net.js app.js card.js landing.js admin-ui.js style.css ./
 COPY legal ./legal
+# the template library (its registry and recipes) and its art packs (served at /art/<pack>.js, and drawn on the server)
+COPY library ./library
+COPY art ./art
 COPY fonts ./fonts
 COPY assets ./assets
 # The landing page's example carols (made by tools/proof.cjs; test/safe.cjs fails if this line and the folder disagree).

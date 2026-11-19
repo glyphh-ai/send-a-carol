@@ -324,6 +324,41 @@ const wrong = function (c, allow) { return c.errors.filter(function (e) { return
     console.log('OK card: the present is opened by taps (counted once, and the reload is held while it plays); the end shows save, share and make your own; the maker\'s email is nowhere in the page or its data');
   }
 
+  // ---- THE TEMPLATE LIBRARY: thousands of templates the pages are handed one page at a time (defs + art packs) ----
+  // SHOTS=<folder> keeps screenshots (scale 1) and the video of the library carol there, to look at.
+  if (!pending('landing.js') && !pending('app.js') && !pending('card.js')) {
+    const Lib = require('../library/index.js'), shots = process.env.SHOTS || '', shot = async function (p, name) { if (shots) { fs.mkdirSync(shots, { recursive: true }); await p.screenshot({ path: path.join(shots, name + '.png') }); } };
+    const drawn = function (sel) { return Array.from(document.querySelectorAll(sel)).filter(function (cv) { try { const x = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let lit = 0; for (let i = 3; i < x.length; i += 4 * 97) if (x[i] > 0) lit++; return lit > 20; } catch (e) { return false; } }).length; };
+    // the landing gallery, on an occasion that only the library has, picked from "More occasions"
+    c = await open({ wide: true }); page = await c.page('/'); await sac(page); await page.waitForSelector('#occs select');
+    await page.selectOption('#occs select', 'diwali'); await until(page, function () { const t = document.querySelectorAll('#tgrid .tpl'); return t.length > 0 && Array.from(t).every(function (x) { return /\/make\?template=diwali-/.test(x.querySelector('a').getAttribute('href')); }); }, null, 12000, 'the Diwali templates');
+    await page.evaluate(function () { document.getElementById('tgrid').scrollIntoView(); });
+    try { await until(page, function (d) { return new Function('return (' + d + ')')()('#tgrid canvas') >= 4; }, drawn.toString(), 15000, 'their thumbnails drawn'); } catch (e) { await shot(page, 'landing-diwali-failed'); throw new Error(e.message + '\n' + c.errors.join('\n')); }
+    const known = await page.evaluate(function () { return Array.from(document.querySelectorAll('#tgrid .tpl a.btn')).map(function (a) { const id = new URL(a.href).searchParams.get('template'), t = window.CarolTemplates.get(id); return t && t.lib && t.packs.length ? 1 : 0; }); });
+    assert(known.length >= 4 && known.every(Boolean), 'the page was handed every library template it shows, with its art packs: ' + known);
+    assert((await page.$$eval('#occs .chip', function (x) { return x.length; })) <= 12, 'the first occasions are chips, the rest are in the list');
+    await shot(page, 'landing-diwali'); assert.deepStrictEqual(wrong(c), [], c.errors.join('\n')); await c.ctx.close();
+    // the search: one word over all of it
+    c = await open({ scale: 1 }); page = await c.page('/'); await sac(page); await page.waitForSelector('#tq'); await page.fill('#tq', 'llamas'); await page.dispatchEvent('#tq', 'input');
+    await until(page, function () { const t = document.querySelectorAll('#tgrid .tpl h3'); return t.length > 0 && Array.from(t).some(function (x) { return /llama/i.test(x.textContent); }); }, null, 12000, 'a search over the library'); await page.evaluate(function () { document.getElementById('tgrid').scrollIntoView(); }); await settle(page); await sleep(600); await shot(page, 'landing-search-phone'); assert.deepStrictEqual(wrong(c), [], c.errors.join('\n')); await c.ctx.close();
+    // a carol made with a library template: /make opens it from a gallery link, the list draws it, its card page plays it
+    const lib = Lib.rows().find(function (r) { return r.occ === 'diwali'; }), dee = await T.user('google:dee', 'dee@example.test', 3);
+    c = await open({ who: 'google:dee', scale: 1 }); page = await c.page('/make?template=' + lib.id); await sac(page); await until(page, function (id) { const t = window.CarolTemplates.get(id); return !!(t && t.lib) && !!document.querySelector('.composer'); }, lib.id, 12000, 'the conversation with the library template known');
+    await shot(page, 'make-library-template-phone'); assert.deepStrictEqual(wrong(c), [], c.errors.join('\n')); await c.ctx.close();
+    c = await open({ who: 'google:dee', scale: 1 }); page = await c.page('/make?new'); await sac(page); await page.waitForSelector('.composer .chip');
+    await page.locator('.composer .chip', { hasText: 'More occasions' }).click(); await page.locator('.composer .chip', { hasText: 'Diwali' }).waitFor(); await sleep(900); await shot(page, 'make-occasions-phone');
+    await page.fill('.composer input[type=search]', 'gradu'); await until(page, function () { const t = Array.from(document.querySelectorAll('.composer .chip')).map(function (x) { return x.textContent; }); return t.length >= 1 && t.every(function (x) { return /gradu/i.test(x); }); }, null, 4000, 'the occasions found by a word');
+    assert.deepStrictEqual(wrong(c), [], c.errors.join('\n')); await c.ctx.close();
+    const made = await T.carol(T.as('google:dee'), { template: lib.id, slug: 'a-library-carol-2026', answers: { to: 'Asha', from: 'Ravi' } });
+    assert.strictEqual(made.template, lib.id); assert(made.defs && made.defs[0].id === lib.id, 'the maker\'s view of the carol carries its template');
+    assert(made.media.indexOf('story') >= 0, 'its video was made on the server with the same engine');
+    if (shots) fs.writeFileSync(path.join(shots, 'library-carol-story.mp4'), (await T.call('GET', '/' + made.slug + '/story.mp4')).body);
+    c = await open({ who: 'google:dee' }); page = await c.page('/make'); await sac(page); await page.waitForSelector('.carol'); await settle(page); assert.deepStrictEqual(wrong(c), [], c.errors.join('\n')); await c.ctx.close();
+    c = await open({ scale: 1 }); page = await c.page('/' + made.slug + '?at=end'); await until(page, function (id) { return !!(window.__card && window.__card.S.tpl && window.__card.S.tpl.id === id); }, lib.id, 12000, 'the card page drawing with the library template');
+    await shot(page, 'card-library-end'); assert.deepStrictEqual(wrong(c), [], c.errors.join('\n')); await c.ctx.close();
+    console.log('OK library: the gallery is handed its library templates a page at a time and draws them (art packs loaded once); "More occasions" and a word find any of ' + Lib.made().length + ' occasions; /make opens a linked library template; a carol made with one is drawn by the server (its video) and by its card page');
+  }
+
   console.log('OK browser');
   await B.close(); await T.done(); fs.rmSync(copy, { recursive: true, force: true }); process.exit(0);
 })().catch(function (e) { console.error(e); Promise.resolve(B && B.close()).catch(function () {}).then(function () { return T && T.done(); }).catch(function () {}).then(function () { process.exit(1); }); });

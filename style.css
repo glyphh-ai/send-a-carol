@@ -69,6 +69,7 @@ a.brand-link { color: inherit; text-decoration: none; display: inline-flex; bord
 button.chip:hover { border-color: var(--a); transform: translateY(-1px); }
 .chip[aria-pressed="true"], .chip[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: var(--cream); }
 .chip.soon { background: transparent; border-style: dashed; color: var(--muted); font-weight: 400; min-height: 36px; padding: 5px 13px; font-size: 13.5px; }
+select.input.chip-select { flex: none; width: auto; min-height: 44px; padding: 8px 38px 8px 16px; border: 1.5px solid var(--ink); border-radius: 999px; font: 600 14.5px/1.1 var(--sans); }
 .chip.sm { min-height: 38px; padding: 6px 13px; font-size: 13.5px; }
 .tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--cream2); color: var(--ink); font: 600 12px/1.2 var(--sans); white-space: nowrap; }
 .mailchips input, .field .mailchips input { border: 0; box-shadow: none; min-height: 34px; padding: 4px 6px; border-radius: 8px; width: auto; }

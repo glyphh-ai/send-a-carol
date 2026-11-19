@@ -73,7 +73,7 @@ let T, S;
     if (p === '/examples/:file' && !examples.length) { if (unasked.indexOf(route) < 0) unasked.push(route); return true; }   // (nothing to ask for yet)
     // (anything that changes a carol is asked of a spare one, so the finished carol stays as it is)
     if (p.indexOf('/api/cards/:id') === 0 && m !== 'GET') p = p.replace(':id', (await fresh()).id).replace(':pid', 'pNOTTHERE1');
-    p = p.replace('/assets/:file', '/assets/glyphh-logo-black.png').replace('/fonts/:file', '/fonts/Lobster-Regular.ttf').replace('/examples/:file', '/examples/' + examples[0]).replace('/legal/:page', '/legal/terms')
+    p = p.replace('/assets/:file', '/assets/glyphh-logo-black.png').replace('/fonts/:file', '/fonts/Lobster-Regular.ttf').replace('/examples/:file', '/examples/' + examples[0]).replace('/legal/:page', '/legal/terms').replace('/art/:file', '/art/' + require('../art/index.js').names[0] + '.js')
       .replace(':id', ready.id).replace(':slug', ready.slug).replace(':pid', ready.pids[0]).replace(':take', ready.take).replace(':n', '0');
     const r = await call(m, p, m === 'GET' ? null : {}, p.indexOf('/api/admin/') === 0 ? admin : ann);
     return !(r.status === 405 || (r.status === 404 && (/^not found$/.test(r.text) || /That card is not here/.test(r.text) || (r.json && /^not[ _]found$/.test(r.json.error || '')))));

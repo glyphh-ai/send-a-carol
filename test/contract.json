@@ -27,6 +27,7 @@
     "GET /api/templates",
     "GET /app.js",
     "GET /art.js",
+    "GET /art/:file",
     "GET /assets/:file",
     "GET /auth/link",
     "GET /card.js",

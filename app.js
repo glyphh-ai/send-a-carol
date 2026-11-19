@@ -81,7 +81,7 @@
     christmas: ['Merry Christmas!', 'The lights are up along the street tonight', 'We saved your seat beside the fire'], birthday: ['Happy birthday!', 'Another year of cartwheels in the hall', 'Blow the candles, make it loud'],
     love: ['For you', 'You burned the toast the day we met', 'And I have loved you ever since'], thanks: ['Thank you!', 'You stayed late and you made it fun', 'Here is a carol from us all'], congrats: ['Congratulations!', 'Now look at you up there', 'We always knew, we always knew'],
   };
-  function sampleCard(tid, occasion, o) { const s = SAMPLE[occasion] || SAMPLE.birthday; o = o || {}; return { template: tid, to: o.to || 'Sam', from: o.from || 'Ada', title: o.title || 'A Carol for ' + (o.to || 'Sam'), greeting: s[0], signoff: 'With love, ' + (o.from || 'Ada'), lyrics: [{ section: 'verse', lines: [s[1]] }, { section: 'hook', lines: [s[2]] }], scenes: [], timing: null }; }
+  function sampleCard(tid, occasion, o) { const oc = S.cfg && (S.cfg.occasions || []).find(function (x) { return x.id === occasion; }), s = SAMPLE[occasion] || (oc ? [oc.hello + '!', 'We wrote you a song of your own', 'This little carol is yours'] : SAMPLE.birthday); o = o || {}; return { template: tid, to: o.to || 'Sam', from: o.from || 'Ada', title: o.title || 'A Carol for ' + (o.to || 'Sam'), greeting: s[0], signoff: 'With love, ' + (o.from || 'Ada'), lyrics: [{ section: 'verse', lines: [s[1]] }, { section: 'hook', lines: [s[2]] }], scenes: [], timing: null }; }
   function thumb(card, o) { const cv = h('canvas', { 'aria-hidden': 'true' }), el = h('span', { class: 'thumb' }, cv); o = o || {}; setTimeout(function () { Thumbs.add(cv, { card: card, hot: o.hot, host: o.host || el, images: o.images }); }, 0); return el; }
 
   // ---------- dialogs and sheets: focus is trapped, Esc and the scrim close ----------
@@ -113,6 +113,8 @@
   function go(url, replace) { if (replace) history.replaceState(null, '', url); else history.pushState(null, '', url); route(); }
   window.addEventListener('popstate', function () { route(); });
   function problem(title, text) { show(h('div', { class: 'center-screen' }, h('div', { class: 'empty', style: 'max-width:440px' }, h('b', { text: title }), text, h('div', { style: 'margin-top:16px' }, h('button', { class: 'btn', text: 'My carols', onclick: function () { go('/make'); } }))))); }
+  // a library template this page has not been handed yet (a link from the gallery, a draft kept in this browser): ask for it
+  async function known(id) { if (id && !CarolTemplates.get(id)) { loading(); try { await SAC.read('/api/templates?per=1&id=' + encodeURIComponent(id)); } catch (e) { /* drawn with the first template until it comes */ } } }
   async function route() {
     const q = new URLSearchParams(location.search), id = q.get('card');
     if (!S.user) return show(signIn(), { dark: true });
@@ -122,7 +124,7 @@
       S.card = r.card; return openCard(q.has('edit'));
     }
     S.card = null;
-    if (q.has('new') || q.get('template')) return convo(null, q.get('template'));
+    if (q.has('new') || q.get('template')) { await known(q.get('template') || (store.get('sac.draft') || {}).template); return convo(null, q.get('template')); }
     home(); if (q.get('buy')) { history.replaceState(null, '', '/make'); pay({ pack: q.get('buy') }); }
   }
   function openCard(edit) {
@@ -258,7 +260,7 @@
     function pick(t) { o.value = t.id; grid.querySelectorAll('.gal-item').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.id === t.id)); }); preview(t); o.onPick(t); }
     async function load() {
       const n = ++G.n; let r; try { r = await SAC.read('/api/templates?per=' + (window.innerWidth >= 720 ? 8 : 6) + '&page=' + G.page + '&q=' + encodeURIComponent(G.q) + '&family=' + encodeURIComponent(G.family) + '&occasion=' + encodeURIComponent(o.occasion || '')); } catch (e) { r = { error: 'The looks did not load. Check your connection.' }; }
-      if (n !== G.n) return; grid.textContent = '';
+      if (n !== G.n) return; grid.textContent = ''; (r.families || []).forEach(function (f) { fams[f.id] = f.name; });
       if (r.error || !r.items) { grid.appendChild(h('div', { class: 'empty' }, h('b', { text: 'Something went wrong' }), r.error || '', h('div', { style: 'margin-top:12px' }, h('button', { class: 'btn sm soft', type: 'button', text: 'Try again', onclick: load })))); return; }
       if (!fam.children.length && (r.families || []).length > 1) { fam.appendChild(h('button', { class: 'chip sm', type: 'button', 'aria-pressed': 'true', 'data-id': '', text: 'All styles' })); r.families.forEach(function (f) { fam.appendChild(h('button', { class: 'chip sm', type: 'button', 'aria-pressed': 'false', 'data-id': f.id, text: f.name })); }); fam.onclick = function (e) { const b = e.target.closest('.chip'); if (!b) return; G.family = b.dataset.id; G.page = 1; fam.querySelectorAll('.chip').forEach(function (c) { c.setAttribute('aria-pressed', String(c === b)); }); load(); }; }
       if (!r.items.length) { grid.appendChild(h('div', { class: 'empty' }, h('b', { text: 'No look matches that' }), 'Try another word or style.')); pager.hidden = true; return; }
@@ -280,7 +282,11 @@
     love: ['How did you meet?', 'The little thing they do that you love', 'Your place, your song, your trip', 'What you would never say out loud'],
     thanks: ['What did they do for you?', 'What changed because of it?', 'How would you describe them in three words?', 'A moment you will not forget'],
     congrats: ['What did they pull off?', 'How long did it take them?', 'Who doubted it? Who never did?', 'What comes next for them?'],
+    sympathy: ['A memory you would like them to hold on to', 'Something the person you lost used to say', 'What you most want them to know right now', 'A place or a song that brings them close'],
+    general: ['What is the occasion, in your words?', 'A story only the two of you know', 'The thing they are famous for', 'What you want them to feel when it plays'],
   };
+  IDEAS['pet-sympathy'] = IDEAS.sympathy; IDEAS['mothers-day'] = IDEAS['fathers-day'] = IDEAS.thanks; IDEAS['kids-birthday'] = IDEAS['milestone-birthday'] = IDEAS['first-birthday'] = IDEAS['belated-birthday'] = IDEAS.birthday;
+  IDEAS.anniversary = IDEAS.wedding = IDEAS.engagement = IDEAS.love; IDEAS.graduation = IDEAS['new-job'] = IDEAS.congrats; IDEAS['happy-holidays'] = IDEAS.christmas;
   // ---------- photos a phone takes: HEIC is read here when this browser can (Safari), and by the server when it cannot ----------
   const PHOTO_TYPES = 'image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif';
   const isHeic = function (f) { return /hei[cf]/i.test(f.type || '') || /\.hei[cf]$/i.test(f.name || ''); };
@@ -384,7 +390,17 @@
     const steps = [
       { ask: function () { return 'Hello' + first + '! I am your carol writer. What are we celebrating?'; }, told: function () { return occ().name; },
         ui: function () { const pickOcc = function (id) { d.occasion = id; const t = d.template && CarolTemplates.get(d.template); if (t && t.occasion !== id) d.template = ''; done(); }, cur = d.occasion || cfg.featured;
-          return [h('div', { class: 'chips', role: 'radiogroup', 'aria-label': 'Occasion' }, live.map(function (o) { return h('button', { class: 'chip', type: 'button', role: 'radio', 'aria-checked': String(o.id === cur), text: o.name, onclick: function () { pickOcc(o.id); } }); })),
+          // the first dozen (the chosen or featured one first), the rest a tap or a word away
+          const FEW = 12, box = h('div', { class: 'chips', role: 'radiogroup', 'aria-label': 'Occasion' }), ord = live.filter(function (o) { return o.id === cur; }).concat(live.filter(function (o) { return o.id !== cur; }));
+          const find = h('input', { class: 'input', type: 'search', placeholder: 'Find one: graduation, Diwali, new job...', 'aria-label': 'Find an occasion', autocomplete: 'off' }); let all = false;
+          const draw = function () {
+            const t = find.value.trim().toLowerCase(), list = ord.filter(function (o) { return !t || (o.name + ' ' + o.id.replace(/-/g, ' ')).toLowerCase().indexOf(t) >= 0; }), few = !t && !all && list.length > FEW + 2;
+            box.textContent = ''; (few ? list.slice(0, FEW) : list).forEach(function (o) { box.appendChild(h('button', { class: 'chip', type: 'button', role: 'radio', 'aria-checked': String(o.id === cur), text: o.name, onclick: function () { pickOcc(o.id); } })); });
+            if (few) box.appendChild(h('button', { class: 'chip soon', type: 'button', text: 'More occasions (' + (list.length - FEW) + ')', onclick: function () { all = true; draw(); } }));
+            if (!list.length) box.appendChild(h('p', { class: 'muted', text: 'No occasion by that name yet. Try another word.' }));
+          };
+          find.addEventListener('input', draw); draw();
+          return [live.length > FEW + 2 ? h('label', { class: 'search' }, icon('search'), find) : null, box,
             h('div', { class: 'row end' }, h('button', { class: 'btn quiet sm', type: 'button', text: 'Skip: ' + (cfg.occasions.find(function (o) { return o.id === cur; }) || live[0] || {}).name, onclick: function () { pickOcc(cur || (live[0] || {}).id); } }))]; } },
       { ask: function () { return 'Lovely. Who is this carol for, and who is it from?'; }, told: function () { return d.to || d.from ? [d.to ? 'For ' + d.to : '', d.from ? 'from ' + d.from : ''].filter(Boolean).join(', ') + (d.relation ? ' (' + d.relation.toLowerCase() + ')' : '') : 'I will keep that a surprise'; },
         ui: function () { return whoFields(d, function () { }).concat([row(done, 'Continue', function () { done(); })]); } },
@@ -400,7 +416,7 @@
           d.photos.forEach(function (p) { p.el = null; p.shown = null; }); photoBox = { count: count, grid: grid, next: next }; drawPhotos();
           return [cfg.storage === false ? h('div', { class: 'banner', role: 'status', text: cfg.closed && cfg.closed.storage || 'Photos cannot be added yet.' }) : null, rightsTick([addB, camB]), drop, grid, h('div', { class: 'row end' }, next)]; } },
       { ask: function () { return 'Now the good part. Tell me a few true things to sing about' + (d.to.trim() ? ' for ' + d.to.trim() : '') + '.'; }, told: function () { const t = d.details.trim(); return t ? (t.length > 90 ? t.slice(0, 88) + '...' : t) : 'Surprise me'; },
-        ui: function () { const ideas = IDEAS[occ().id] || IDEAS.birthday; let i = 0; const hint = h('p', { class: 'prompt-line', 'aria-hidden': 'true' }), put = function () { hint.textContent = ''; add(hint, ['Stuck? ', h('b', { text: ideas[i % ideas.length] })]); }; put(); const iv = setInterval(function () { if (!D.body.contains(hint)) return clearInterval(iv); if (!D.hidden && !still) { i++; put(); } }, 3600);
+        ui: function () { const ideas = IDEAS[occ().id] || IDEAS.general; let i = 0; const hint = h('p', { class: 'prompt-line', 'aria-hidden': 'true' }), put = function () { hint.textContent = ''; add(hint, ['Stuck? ', h('b', { text: ideas[i % ideas.length] })]); }; put(); const iv = setInterval(function () { if (!D.body.contains(hint)) return clearInterval(iv); if (!D.hidden && !still) { i++; put(); } }, 3600);
           const ta = h('textarea', { class: 'input', maxlength: String(L.details), rows: '5', placeholder: 'Waffles the dog ate the whole gingerbread house. Milo lost his first tooth. She still beats everyone at cards.', 'aria-label': 'True details to sing about', oninput: function () { d.details = ta.value; keep(); } }); ta.value = d.details;
           return [ta, h('div', { class: 'row', style: 'justify-content:space-between' }, hint, counter(ta, L.details)), h('div', { class: 'chips' }, STARTS.map(function (s) { return h('button', { class: 'chip sm', type: 'button', text: '+ ' + s[0], onclick: function () { ta.value = (ta.value.trim() ? ta.value.replace(/\s*$/, '\n') : '') + s[1]; d.details = ta.value; ta.dispatchEvent(new Event('input')); ta.focus(); } }); })), row(done, 'Continue', function () { done(); }, 'Skip: surprise me')]; } },
       { ask: function () { return 'Last one, and you can skip it: anything I must work in?'; }, told: function () { return d.own.trim() ? 'My own lyrics' + (d.must.trim() ? ', and a line to keep' : '') : d.must.trim() ? 'Keep this line: "' + d.must.trim() + '"' : 'Nothing special'; },

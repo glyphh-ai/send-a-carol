@@ -1,0 +1,35 @@
+'use strict';
+// library/props/outdoors-sky.js : the props of art/pack-props-outdoors-sky.js (the beach and the desert, space, the sea,
+// the fair and days out, and the small pieces that float in a top corner or cross the sky).
+// None of them carries lettering, a brand or a real mark: the blimp's panel and the plane's banner are blank.
+module.exports = [
+  { name: 'surfboard', label: 'a striped surfboard stood in the sand with a starfish', tags: ['surf', 'beach', 'summer', 'vacation', 'ocean', 'retirement', 'teen'], roles: ['hero', 'floor'], size: 0.85, float: false },
+  { name: 'palmtree', label: 'a leaning palm on a sand islet, a small crab waving', tags: ['palm', 'beach', 'tropical', 'island', 'vacation', 'summer', 'retirement', 'bon-voyage'], roles: ['hero', 'floor'], size: 0.95, float: false },
+  { name: 'beachumbrella', label: 'a striped beach umbrella over a towel and a bouncing beach ball', tags: ['beach', 'umbrella', 'summer', 'vacation', 'pool', 'retirement', 'relax'], roles: ['hero', 'floor'], size: 0.95, float: false },
+  { name: 'sandcastle', label: 'a three-towered sandcastle with flags, a bucket and a spade', tags: ['sandcastle', 'beach', 'summer', 'kids', 'vacation', 'family', 'new-home'], roles: ['hero', 'floor'], size: 0.9, float: false },
+  { name: 'cactus', label: 'a flowering saguaro cactus among desert stones', tags: ['cactus', 'desert', 'southwest', 'summer', 'road-trip', 'funny', 'plant'], roles: ['hero', 'floor'], size: 0.85, float: false },
+  { name: 'rocketship', label: 'a toy-bright rocket blasting off at a tilt', tags: ['rocket', 'space', 'launch', 'kids', 'new-job', 'graduation', 'adventure', 'congrats'], roles: ['hero', 'sky', 'fly'], size: 0.85, float: true },
+  { name: 'ufo', label: 'a flying saucer with a friendly visitor in the dome and a golden beam', tags: ['ufo', 'space', 'alien', 'funny', 'kids', 'night', 'sci-fi'], roles: ['sky', 'hero', 'fly'], size: 0.85, float: true },
+  { name: 'planet', label: 'a banded ringed planet with a little moon going round', tags: ['planet', 'space', 'night', 'kids', 'dream', 'science', 'out-of-this-world'], roles: ['sky', 'hero'], size: 0.85, float: true },
+  { name: 'telescope', label: 'a brass-banded telescope on a tripod, pointed at a bright star', tags: ['telescope', 'stars', 'space', 'night', 'science', 'retirement', 'graduation', 'wonder'], roles: ['hero', 'floor'], size: 0.85, float: false },
+  { name: 'lighthouse', label: 'a red-banded lighthouse on its rock, the beam turning', tags: ['lighthouse', 'sea', 'coast', 'harbour', 'guidance', 'thank-you', 'retirement', 'calm'], roles: ['hero', 'floor'], size: 0.95, float: false },
+  { name: 'anchor', label: 'a ship\'s anchor wound with rope', tags: ['anchor', 'sea', 'nautical', 'sailing', 'harbour', 'steadfast', 'anniversary', 'retirement'], roles: ['hero', 'floor'], size: 0.8, float: false },
+  { name: 'treasurechest', label: 'an open treasure chest heaped with gold, jewels and a crown', tags: ['treasure', 'pirate', 'gold', 'adventure', 'kids', 'birthday', 'congrats'], roles: ['hero', 'floor'], size: 0.85, float: false },
+  { name: 'ferriswheel', label: 'a Ferris wheel turning slowly, its bulbs chasing round', tags: ['ferris-wheel', 'fair', 'carnival', 'date', 'summer', 'party', 'romantic'], roles: ['hero', 'floor'], size: 1.0, float: false },
+  { name: 'carousel', label: 'a carousel with three horses rising and falling under a striped top', tags: ['carousel', 'fair', 'carnival', 'kids', 'birthday', 'retro', 'party'], roles: ['hero', 'floor'], size: 1.0, float: false },
+  { name: 'popcorn', label: 'a striped box of popcorn, kernels popping over the top', tags: ['popcorn', 'movie', 'fair', 'carnival', 'party', 'snack', 'fun'], roles: ['hero', 'floor'], size: 0.8, float: false },
+  { name: 'picnicbasket', label: 'a wicker picnic basket on a gingham blanket', tags: ['picnic', 'summer', 'park', 'date', 'family', 'spring', 'thank-you', 'outdoors'], roles: ['hero', 'floor'], size: 0.9, float: false },
+  { name: 'bicycle', label: 'a bicycle with flowers in its front basket', tags: ['bicycle', 'bike', 'spring', 'summer', 'outdoors', 'retirement', 'get-well', 'ride'], roles: ['hero', 'floor'], size: 0.95, float: false },
+  { name: 'skis', label: 'a pair of skis and poles planted in a snowdrift', tags: ['ski', 'snow', 'winter', 'mountain', 'vacation', 'sport', 'adventure'], roles: ['hero', 'floor'], size: 0.9, float: false },
+  { name: 'kite', label: 'a four-colour diamond kite with a bow-tied tail', tags: ['kite', 'sky', 'spring', 'summer', 'kids', 'windy', 'beach', 'play'], roles: ['sky', 'fly', 'hero'], size: 0.8, float: true },
+  { name: 'paperplane', label: 'a paper plane that has just flown a loop', tags: ['paper-plane', 'sky', 'message', 'school', 'miss-you', 'bon-voyage', 'kids', 'work'], roles: ['fly', 'sky'], size: 0.7, float: true },
+  { name: 'birdflock', label: 'a V of birds on the wing', tags: ['birds', 'flock', 'sky', 'calm', 'journey', 'farewell', 'autumn', 'sympathy'], roles: ['fly', 'sky'], size: 0.75, float: true },
+  { name: 'shootingstar', label: 'a golden shooting star with three coloured trails', tags: ['shooting-star', 'wish', 'night', 'congrats', 'dream', 'birthday', 'star'], roles: ['fly', 'sky'], size: 0.75, float: true },
+  { name: 'blimp', label: 'a plump airship with a blank side panel', tags: ['blimp', 'airship', 'sky', 'sport', 'game-day', 'retro', 'announcement'], roles: ['fly', 'sky'], size: 0.85, float: true },
+  { name: 'bannerplane', label: 'a little plane towing a blank banner', tags: ['plane', 'banner', 'sky', 'announcement', 'beach', 'congrats', 'birthday', 'surprise'], roles: ['fly'], size: 0.9, float: true },
+  { name: 'butterflies', label: 'three butterflies looping about', tags: ['butterfly', 'spring', 'garden', 'calm', 'get-well', 'mothers-day', 'sympathy', 'new-baby'], roles: ['sky', 'fly'], size: 0.7, float: true },
+  { name: 'skylanterns', label: 'three glowing paper lanterns floating up', tags: ['sky-lantern', 'lantern', 'night', 'wish', 'remembrance', 'festival', 'romantic', 'calm'], roles: ['sky', 'fly'], size: 0.8, float: true },
+  { name: 'balloontrio', label: 'three balloons that slipped away, strings trailing', tags: ['balloons', 'party', 'birthday', 'sky', 'celebration', 'kids', 'congrats'], roles: ['sky', 'fly'], size: 0.75, float: true },
+  { name: 'cloudpair', label: 'two soft clouds, the big one smiling', tags: ['cloud', 'sky', 'calm', 'day', 'dream', 'new-baby', 'cute'], roles: ['sky', 'fly'], size: 0.85, float: true },
+  { name: 'comet', label: 'an icy comet with a long shimmering tail', tags: ['comet', 'space', 'night', 'wish', 'once-in-a-lifetime', 'science', 'wonder'], roles: ['fly', 'sky'], size: 0.8, float: true }
+];

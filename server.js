@@ -10,16 +10,18 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const env = process.env;
 if (require.main === module && fs.existsSync(path.join(__dirname, '.env'))) fs.readFileSync(path.join(__dirname, '.env'), 'utf8').split('\n').forEach(function (l) { const m = /^([A-Z0-9_]+)=(.*)$/.exec(l.trim()); if (m && env[m[1]] === undefined) env[m[1]] = m[2].replace(/^["']|["']$/g, ''); });
 const CFG = require('./config.js'), Store = require('./store.js'), Brand = require('./brand.js'), Agent = require('./agent.js'), Song = require('./song.js'), Render = require('./render.js'), Legal = require('./legal/legal.js');
-const Templates = require('./templates.js'), Engine = require('./engine.js');
+const Templates = require('./templates.js'), Engine = require('./engine.js'), Lib = require('./library/index.js'), ArtPacks = require('./art/index.js');
 
 // ---------- what is served, and which build this is ----------
 const ROOT = env.CLIENT_DIR || __dirname, APP = CFG.app, SITE = CFG.site;
 const SCRIPTS = ['art.js', 'templates.js', 'engine.js', 'fonts.js', 'net.js', 'app.js', 'card.js', 'landing.js', 'admin-ui.js', 'style.css'], PAGES = ['landing.html', 'app.html', 'card.html', 'admin.html'];
 const TYPES = { js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', html: 'text/html; charset=utf-8', png: 'image/png', jpg: 'image/jpeg', svg: 'image/svg+xml', ttf: 'font/ttf', mp4: 'video/mp4', gif: 'image/gif', m4a: 'audio/mp4', json: 'application/json', txt: 'text/plain; charset=utf-8' };
-function buildOf(dir) { const h = crypto.createHash('sha256'); PAGES.concat(SCRIPTS).forEach(function (f) { h.update(f + '\n'); h.update(fs.readFileSync(path.join(dir, f))); h.update('\n'); }); return h.digest('hex').slice(0, 10); }
+// the library's art packs (art/pack-*.js) are served at /art/<pack>.js; a page loads the ones a template names (t.packs)
+const PACKS = ArtPacks.names.map(function (n) { return 'art/' + n + '.js'; });
+function buildOf(dir) { const h = crypto.createHash('sha256'); PAGES.concat(SCRIPTS).forEach(function (f) { h.update(f + '\n'); h.update(fs.readFileSync(path.join(dir, f))); h.update('\n'); }); PACKS.forEach(function (f) { h.update(f + '\n'); h.update(fs.readFileSync(path.join(__dirname, f))); h.update('\n'); }); h.update('library ' + Lib.version); return h.digest('hex').slice(0, 10); }
 let BUILD = buildOf(ROOT), pages = {};
 const ROUTES = ['GET /', 'GET /make', 'GET /gallery', 'GET /pricing', 'GET /admin', 'GET /healthz', 'GET /legal', 'GET /legal/:page', 'GET /auth/link', 'POST /auth/link', 'GET /stop', 'POST /stop', 'POST /mcp', 'GET /favicon.svg', 'GET /assets/:file', 'GET /fonts/:file', 'GET /examples/:file',
-  'GET /:slug', 'GET /:slug/poster.jpg', 'GET /:slug/story.mp4', 'GET /:slug/square.mp4', 'GET /:slug/preview.gif', 'GET /:slug/song.m4a', 'GET /:slug/photo/:n'].concat(SCRIPTS.map(function (f) { return 'GET /' + f; }),
+  'GET /:slug', 'GET /:slug/poster.jpg', 'GET /:slug/story.mp4', 'GET /:slug/square.mp4', 'GET /:slug/preview.gif', 'GET /:slug/song.m4a', 'GET /:slug/photo/:n', 'GET /art/:file'].concat(SCRIPTS.map(function (f) { return 'GET /' + f; }),
   ['GET /api/me', 'POST /api/auth/google', 'POST /api/auth/link', 'POST /api/auth/out', 'GET /api/templates', 'GET /api/landing', 'GET /api/cards', 'POST /api/cards', 'GET /api/cards/:id', 'POST /api/cards/:id/save', 'POST /api/cards/:id/photos', 'DELETE /api/cards/:id/photos/:pid', 'GET /api/cards/:id/photos/:pid',
     'POST /api/cards/:id/write', 'POST /api/cards/:id/song', 'POST /api/cards/:id/take', 'POST /api/cards/:id/render', 'GET /api/cards/:id/status', 'GET /api/cards/:id/song/:take', 'POST /api/cards/:id/share', 'POST /api/cards/:id/down', 'POST /api/cards/:id/up', 'DELETE /api/cards/:id', 'POST /api/cards/:id/email', 'GET /api/slug',
     'POST /api/buy', 'GET /api/buy/confirm', 'GET /api/card/:slug', 'POST /api/card/:slug/open', 'POST /api/report', 'POST /api/admin/login', 'POST /api/admin/logout', 'GET /api/admin/data', 'POST /api/admin/tool']);
@@ -138,7 +140,7 @@ async function setSetting(k, v) { await db.run('INSERT INTO settings (k, v, at) 
 const limit = function (k) { const o = SET.limits && SET.limits[k]; return typeof o === 'number' && o >= 0 ? o : CFG.limits[k]; };
 const inDates = function (f, md) { return !!f && f.length === 2 && (f[0] <= f[1] ? md >= f[0] && md <= f[1] : md >= f[0] || md <= f[1]); };
 function occasions() {
-  const made = Templates.occasions || [], md = new Date(now()).toISOString().slice(5, 10);
+  const made = (Templates.occasions || []).concat(Lib.made()), md = new Date(now()).toISOString().slice(5, 10);
   const list = CFG.occasions.map(function (o) { const s = SET['occasion:' + o.id] || {}; let state = s.state || o.state; if (state === 'live' && made.indexOf(o.id) < 0) state = 'soon'; const featured = s.featured !== undefined ? s.featured : o.featured; return { id: o.id, name: o.name, hello: o.hello, state: state, featured: featured, now: state === 'live' && inDates(featured, md) }; });
   const f = list.find(function (o) { return o.now; }) || list.find(function (o) { return o.id === CFG.defaultOccasion && o.state === 'live'; }) || list.find(function (o) { return o.state === 'live'; });
   return { list: list, featured: f ? f.id : '' };
@@ -150,13 +152,25 @@ function templates(q) {
   const text = str(q.q, 60).toLowerCase(), per = Math.max(1, Math.min(48, +q.per || 12));
   if (q.occasion) items = items.filter(function (t) { return t.occasion === q.occasion; });
   if (q.family) items = items.filter(function (t) { return t.family === q.family; });
+  if (q.id) items = items.filter(function (t) { return t.id === q.id; });   // one template by its id (a page that was linked to it)
   if (text) items = items.filter(function (t) { return [t.name, t.blurb, t.family, t.occasion].concat(t.tags || []).join(' ').toLowerCase().indexOf(text) >= 0; });
+  // the library's templates (rows, expanded only for the page that is sent)
+  const one = q.id ? Lib.row(str(q.id, 80)) : null, rows = (q.id ? (one && live.indexOf(one.occ) >= 0 ? [one] : []) : Lib.search({ q: text, occasion: q.occasion || '', family: q.family || '', occasions: live })).filter(function (r) { return !tplOff(r.id); });
+  items = items.concat(rows.map(function (r) { return { id: r.id, name: r.name, occasion: r.occ, family: r.fam, blurb: r.blurb, tags: r.tags || [], bpm: r.bpm, order: 1000 + (r.n || 0), lib: true }; }));
   const ord = function (t) { const s = SET['template:' + t.id]; return s && typeof s.order === 'number' ? s.order : (t.order || 500); };
   items = items.slice().sort(function (a, b) { return ord(a) - ord(b) || (a.name < b.name ? -1 : 1); });
-  const pagesN = Math.max(1, Math.ceil(items.length / per)), page = Math.max(1, Math.min(pagesN, +q.page || 1));
-  return { items: items.slice((page - 1) * per, page * per).map(function (t) { return { id: t.id, name: t.name, occasion: t.occasion, family: t.family, blurb: t.blurb, tags: t.tags, bpm: t.music && t.music.bpm }; }), total: items.length, page: page, pages: pagesN, per: per,
-    families: (Templates.families || []).filter(function (f) { return !q.occasion || f.occasion === q.occasion; }) };
+  const pagesN = Math.max(1, Math.ceil(items.length / per)), page = Math.max(1, Math.min(pagesN, +q.page || 1)), shown = items.slice((page - 1) * per, page * per);
+  const out = { items: shown.map(function (t) { return { id: t.id, name: t.name, occasion: t.occasion, family: t.family, blurb: t.blurb, tags: t.tags, bpm: t.lib ? t.bpm : t.music && t.music.bpm }; }), total: items.length, page: page, pages: pagesN, per: per,
+    families: (Templates.families || []).filter(function (f) { return !q.occasion || f.occasion === q.occasion; }).concat(q.occasion && live.indexOf(q.occasion) >= 0 ? Lib.families(q.occasion) : []) };
+  const defs = shown.filter(function (t) { return t.lib; }).map(function (t) { return Lib.get(t.id); }).filter(Boolean);
+  if (defs.length) out.defs = defs;   // a page keeps these (CarolTemplates.add, net.js) and loads their art packs
+  return out;
 }
+// every template, launch and library, in brief (for the admin)
+let CATALOG = null;
+const catalog = function () { return CATALOG || (CATALOG = Templates.list.map(function (t) { return { id: t.id, name: t.name, occasion: t.occasion, family: t.family, order: t.order }; }).concat(Lib.rows().map(function (r) { return { id: r.id, name: r.name, occasion: r.occ, family: r.fam, order: 1000 + (r.n || 0) }; }))); };
+// the definition a page needs to draw a carol made with a library template (none for a launch template: every page has those)
+const defOf = function (id) { const t = Lib.row(id) ? Lib.get(id) : null; return t ? [t] : null; };
 
 // ---------- who is asking ----------
 const COOKIE = 'sac', ACOOKIE = 'saca';
@@ -347,7 +361,9 @@ function engineCard(row, doc, photos, take) {
 }
 // what a video was made from, as a short hash: the same card, photos and take give the same one
 const renderKey = function (e, takeId) { return crypto.createHash('sha256').update(JSON.stringify([e.card, e.pids, takeId || ''])).digest('hex').slice(0, 16); };
-async function view(row, user) {   // the maker's own view of a carol
+// a library template's definition goes along with a carol (defs), for the page to draw it with
+async function view(row, user) { const v = await viewOf(row, user), d = defOf(row.template); if (d) v.defs = d; return v; }
+async function viewOf(row, user) {   // the maker's own view of a carol
   const doc = docOf(row), photos = await photosOf(row.id), takes = await db.all('SELECT id, n, seconds, peak, rms, at FROM takes WHERE card = ? ORDER BY n', [row.id]), take = row.take ? await db.get('SELECT * FROM takes WHERE id = ?', [row.take]) : null;
   const job = await db.get("SELECT id, kind, state, stage, pct, error FROM jobs WHERE card = ? ORDER BY created DESC LIMIT 1", [row.id]), media = await db.all('SELECT kind, take FROM media WHERE card = ?', [row.id]);
   const e = engineCard(row, doc, photos, take), sent = (await db.get("SELECT COUNT(*) AS n FROM sends WHERE card = ? AND state = 'sent'", [row.id])).n;
@@ -590,7 +606,7 @@ function page(title, inner, code) {
 const gone = function (res) { res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' }); res.end(page('Not here', '<h1>That card is not here</h1><p>It may have been taken down by the person who made it, or the link may be mistyped.</p><p><a class="btn" href="/">Make a carol of your own</a></p>')); };
 
 const mail = require('./email.js')({ db: db, ready: ready, tooMany: tooMany, json: json, body: body, page: page, env: env, accountOf: accountOf, enter: signInByEmail });
-const Admin = require('./admin.js')({ db: db, CFG: CFG, Templates: Templates, occasions: occasions, setSetting: setSetting, settings: function () { return SET; }, limit: limit, grant: grant, balance: balance, removeCard: removeCard, removeMedia: removeMedia, kick: kick, note: note, str: str, now: now, rid: rid, env: env });
+const Admin = require('./admin.js')({ db: db, CFG: CFG, Templates: Templates, catalog: catalog, occasions: occasions, setSetting: setSetting, settings: function () { return SET; }, limit: limit, grant: grant, balance: balance, removeCard: removeCard, removeMedia: removeMedia, kick: kick, note: note, str: str, now: now, rid: rid, env: env });
 
 // ---------- the card's own page: /<card-name>, for whoever it was sent to ----------
 async function cardBySlug(slug) { return SLUG.test(slug) && !slugProblem(slug) ?db.get("SELECT * FROM cards WHERE slug = ? AND state = 'ready'", [slug]) : null; }
@@ -608,8 +624,8 @@ async function cardPage(req, res, row) {
 }
 const mediaStamp = async function (id) { const m = await db.get("SELECT mkey FROM media WHERE card = ? AND kind = 'poster'", [id]); return m ? crypto.createHash('sha256').update(m.mkey).digest('hex').slice(0, 8) : '0'; };
 async function publicCard(row) {
-  const doc = docOf(row), photos = await photosOf(row.id), take = row.take ? await db.get('SELECT * FROM takes WHERE id = ?', [row.take]) : null, e = engineCard(row, doc, photos, take), base = '/' + row.slug, v = '?v=' + await mediaStamp(row.id);
-  return { slug: row.slug, title: e.card.title, to: e.card.to, from: e.card.from, occasion: row.occasion, engine: e.card, photos: e.pids.map(function (p, i) { return base + '/photo/' + i + v; }), song: take ? base + '/song.m4a' + v : '', poster: base + '/poster.jpg' + v, story: base + '/story.mp4' + v, square: base + '/square.mp4' + v, url: SITE + base, name: CFG.name };
+  const doc = docOf(row), photos = await photosOf(row.id), take = row.take ? await db.get('SELECT * FROM takes WHERE id = ?', [row.take]) : null, e = engineCard(row, doc, photos, take), base = '/' + row.slug, v = '?v=' + await mediaStamp(row.id), d = defOf(row.template);
+  return Object.assign(d ? { defs: d } : {}, { slug: row.slug, title: e.card.title, to: e.card.to, from: e.card.from, occasion: row.occasion, engine: e.card, photos: e.pids.map(function (p, i) { return base + '/photo/' + i + v; }), song: take ? base + '/song.m4a' + v : '', poster: base + '/poster.jpg' + v, story: base + '/story.mp4' + v, square: base + '/square.mp4' + v, url: SITE + base, name: CFG.name });
 }
 async function sendStored(req, res, key, o) {
   const rh = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || ''), range = rh && (rh[1] || rh[2]) ? { start: rh[1] ? +rh[1] : null, end: rh[2] ? +rh[2] : null } : null;
@@ -661,7 +677,7 @@ async function api(req, res, url) {
   }
   if (route === 'POST /api/auth/link') return mail.ask(req, res);
   if (route === 'POST /api/auth/out') { res.setHeader('Set-Cookie', COOKIE + '=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'); return json(res, { ok: true }); }
-  if (route === 'GET /api/templates') return json(res, templates({ q: q.get('q'), occasion: q.get('occasion'), family: q.get('family'), page: q.get('page'), per: q.get('per') }));
+  if (route === 'GET /api/templates') return json(res, templates({ q: q.get('q'), occasion: q.get('occasion'), family: q.get('family'), page: q.get('page'), per: q.get('per'), id: q.get('id') }));
   if (route === 'GET /api/landing') return json(res, landing());
   if (route === 'GET /api/slug') { const s = str(q.get('s'), 60).toLowerCase(), bad = slugProblem(s), taken = !bad && await db.get('SELECT id FROM cards WHERE slug = ?', [s]); return json(res, { slug: s, ok: !bad && (!taken || taken.id === q.get('card')), why: bad || (taken && taken.id !== q.get('card') ? 'That name is taken.' : '') }); }
 
@@ -706,7 +722,9 @@ async function api(req, res, url) {
     const text = str(q.get('q'), 60).toLowerCase(), state = str(q.get('state'), 12), per = 12, page = Math.max(1, +q.get('page') || 1), where = ["uid = ?", "state <> 'deleted'"], args = [user.id];
     if (state) { where.push('state = ?'); args.push(state); } if (text) { where.push('(LOWER(title) LIKE ? OR LOWER(COALESCE(slug, \'\')) LIKE ?)'); args.push('%' + text + '%', '%' + text + '%'); }
     const total = (await db.get('SELECT COUNT(*) AS n FROM cards WHERE ' + where.join(' AND '), args)).n, rows = await db.all('SELECT id, slug, state, occasion, template, title, paid, opens, updated FROM cards WHERE ' + where.join(' AND ') + ' ORDER BY updated DESC LIMIT ? OFFSET ?', args.concat([per, (page - 1) * per]));
-    return json(res, { items: rows.map(function (r) { return { id: r.id, slug: r.slug || '', state: r.state, occasion: r.occasion, template: r.template, title: r.title || 'Untitled carol', paid: !!r.paid, opens: r.opens || 0, updated: r.updated, poster: r.state === 'ready' && r.slug ? '/' + r.slug + '/poster.jpg' : '' }; }), total: total, page: page, pages: Math.max(1, Math.ceil(total / per)) });
+    const out = { items: rows.map(function (r) { return { id: r.id, slug: r.slug || '', state: r.state, occasion: r.occasion, template: r.template, title: r.title || 'Untitled carol', paid: !!r.paid, opens: r.opens || 0, updated: r.updated, poster: r.state === 'ready' && r.slug ? '/' + r.slug + '/poster.jpg' : '' }; }), total: total, page: page, pages: Math.max(1, Math.ceil(total / per)) };
+    const defs = Array.from(new Set(rows.map(function (r) { return r.template; }))).reduce(function (a, id) { return a.concat(defOf(id) || []); }, []); if (defs.length) out.defs = defs;
+    return json(res, out);
   }
   if (route === 'POST /api/cards') {
     const b = await body(req);
@@ -811,9 +829,9 @@ async function mcp(req, res, url) {
 }
 
 // ---------- every request ----------
-const FILES = {}; SCRIPTS.forEach(function (f) { FILES['/' + f] = f; });
+const FILES = {}; SCRIPTS.concat(PACKS).forEach(function (f) { FILES['/' + f] = f; });
 function sendFile(req, res, file, url, cache) {
-  const v = url.searchParams.get('v'), full = path.join(/^(fonts|assets|examples)\//.test(file) ? __dirname : ROOT, file);
+  const v = url.searchParams.get('v'), full = path.join(/^(fonts|assets|examples|art)\//.test(file) ? __dirname : ROOT, file);
   if (!fs.existsSync(full)) { res.writeHead(404); return res.end('not found'); }
   const st = fs.statSync(full), head = { 'Content-Type': TYPES[file.split('.').pop()] || 'application/octet-stream', 'Cache-Control': cache || (v === null ? 'no-cache' : v === BUILD ? 'public, max-age=31536000, immutable' : 'no-store'), 'Accept-Ranges': 'bytes' };
   const rh = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
@@ -903,7 +921,8 @@ async function check(o) {
   let bad = 0; const rows = await db.all("SELECT id, template, doc FROM cards WHERE state <> 'deleted' ORDER BY updated DESC LIMIT 2000");
   for (const r of rows) { try { const d = docOf(r); if (d.script && !Templates.get(r.template)) throw new Error('its template ' + r.template + ' is gone'); if (d.script) Engine.plan(engineCard(r, d, [], null).card); } catch (e) { if (++bad <= 20) no('carol ' + r.id + ' no longer opens: ' + e.message); } }
   ok((rows.length - bad) + ' of ' + rows.length + ' saved carols open with this build');
-  if (Templates.list.length < 1) no('there are no templates'); else ok(Templates.list.length + ' templates');
+  if (Templates.list.length < 1) no('there are no templates'); else ok(Templates.list.length + ' templates and ' + Lib.count() + ' in the library (' + Lib.version + ')');
+  try { Lib.rows().forEach(function (r) { Lib.expand(r); }); } catch (e) { no('the template library does not open: ' + e.message); }
   return done();
 }
 function shutdown() { J.stopping = true; setTimeout(function () { process.exit(0); }, 4000).unref(); }

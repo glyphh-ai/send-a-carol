@@ -24,7 +24,8 @@
     congrats: { to: 'Priya', from: 'The whole team', title: 'You Did It, Priya', greeting: 'Congratulations!', signoff: 'Cheering, the whole team', lines: ['Four long years and a thousand cups of tea', 'Now look at you up there', 'We always knew, we always knew', 'So here is a carol just for you'] },
   };
   function sampleCard(t) {
-    const s = SAMPLE[t.occasion] || SAMPLE.birthday;
+    const o = (cfg && cfg.occasions || []).find(function (x) { return x.id === t.occasion; });
+    const s = SAMPLE[t.occasion] || (o ? { to: 'Sam', from: 'Ada', title: 'A Carol for Sam', greeting: o.hello + ', Sam', signoff: 'With love, Ada', lines: ['We wrote you a song of your own', 'With your name in every line', 'Every memory, every smile', 'This little carol is yours'] } : SAMPLE.birthday);
     return { template: t.id, to: s.to, from: s.from, title: s.title, greeting: s.greeting, signoff: s.signoff, lyrics: [{ section: 'verse', lines: s.lines.slice(0, 2) }, { section: 'hook', lines: s.lines.slice(2) }], scenes: [], timing: null };
   }
 
@@ -136,9 +137,13 @@
   const G = { q: '', occasion: '', family: '', page: 1, n: 0 };
   function occasions() {
     const row = $('#occs'), soon = $('#soon'), live = cfg.occasions.filter(function (o) { return o.state === 'live'; }), later = cfg.occasions.filter(function (o) { return o.state === 'soon'; });
-    const pick = function (id) { G.occasion = id; G.family = ''; G.page = 1; row.querySelectorAll('.chip').forEach(function (c) { c.setAttribute('aria-pressed', String(c.dataset.id === id)); }); gallery(); };
+    // the first occasions (today's first) as chips; every occasion, A to Z, in a list after them
+    const FEW = 11, first = live.filter(function (o) { return o.id === cfg.featured; }).concat(live.filter(function (o) { return o.id !== cfg.featured; })).slice(0, FEW);
+    const more = live.length > FEW ? h('select', { class: 'input chip-select', 'aria-label': 'More occasions', onchange: function () { if (more.value) pick(more.value); } }) : null;
+    const pick = function (id) { G.occasion = id; G.family = ''; G.page = 1; row.querySelectorAll('.chip').forEach(function (c) { c.setAttribute('aria-pressed', String(c.dataset.id === id)); }); if (more) more.value = first.some(function (o) { return o.id === id; }) ? '' : id; gallery(); };
     row.appendChild(h('button', { class: 'chip', 'data-id': '', 'aria-pressed': 'true', text: 'All occasions', onclick: function () { pick(''); } }));
-    live.forEach(function (o) { row.appendChild(h('button', { class: 'chip', 'data-id': o.id, 'aria-pressed': 'false', text: o.name, onclick: function () { pick(o.id); } })); });
+    if (more) { more.appendChild(h('option', { value: '', text: 'Every occasion (' + live.length + ')' })); live.slice().sort(function (a, b) { return a.name < b.name ? -1 : 1; }).forEach(function (o) { more.appendChild(h('option', { value: o.id, text: o.name })); }); row.appendChild(more); }
+    first.forEach(function (o) { row.appendChild(h('button', { class: 'chip', 'data-id': o.id, 'aria-pressed': 'false', text: o.name, onclick: function () { pick(o.id); } })); });
     if (later.length) { soon.hidden = false; add(soon, ['Coming soon:', later.map(function (o) { return h('span', { class: 'chip soon', text: o.name }); })]); }
   }
   function gallery() {

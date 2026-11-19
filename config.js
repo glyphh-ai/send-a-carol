@@ -59,21 +59,22 @@ const config = {
     { id: 'love', name: 'Love & Valentine\'s', state: 'live', featured: ['01-20', '02-14'], hello: 'With love' },
     { id: 'thanks', name: 'Thank you', state: 'live', featured: null, hello: 'Thank you' },
     { id: 'congrats', name: 'Congratulations', state: 'live', featured: null, hello: 'Congratulations' },
-    { id: 'anniversary', name: 'Anniversary', state: 'soon', featured: null, hello: 'Happy anniversary' },
-    { id: 'mothers-day', name: 'Mother\'s Day', state: 'soon', featured: ['04-25', '05-12'], hello: 'Happy Mother\'s Day' },
-    { id: 'fathers-day', name: 'Father\'s Day', state: 'soon', featured: ['06-01', '06-21'], hello: 'Happy Father\'s Day' },
-    { id: 'new-baby', name: 'New baby', state: 'soon', featured: null, hello: 'Welcome, little one' },
-    { id: 'wedding', name: 'Wedding & engagement', state: 'soon', featured: null, hello: 'Congratulations' },
-    { id: 'graduation', name: 'Graduation', state: 'soon', featured: ['05-13', '05-31'], hello: 'Congratulations, graduate' },
-    { id: 'get-well', name: 'Get well', state: 'soon', featured: null, hello: 'Get well soon' },
-    { id: 'miss-you', name: 'Thinking of you', state: 'soon', featured: null, hello: 'Thinking of you' },
-    { id: 'new-year', name: 'New Year', state: 'soon', featured: null, hello: 'Happy New Year' },
-    { id: 'hanukkah', name: 'Hanukkah', state: 'off', featured: null, hello: 'Happy Hanukkah' },
-    { id: 'diwali', name: 'Diwali', state: 'off', featured: null, hello: 'Happy Diwali' },
-    { id: 'eid', name: 'Eid', state: 'off', featured: null, hello: 'Eid Mubarak' },
-    { id: 'easter', name: 'Easter', state: 'off', featured: null, hello: 'Happy Easter' },
-    { id: 'halloween', name: 'Halloween', state: 'off', featured: null, hello: 'Happy Halloween' },
-    { id: 'thanksgiving', name: 'Thanksgiving', state: 'off', featured: null, hello: 'Happy Thanksgiving' },
+    { id: 'anniversary', name: 'Anniversary', state: 'live', featured: null, hello: 'Happy anniversary' },
+    { id: 'mothers-day', name: 'Mother\'s Day', state: 'live', featured: ['04-25', '05-12'], hello: 'Happy Mother\'s Day' },
+    { id: 'fathers-day', name: 'Father\'s Day', state: 'live', featured: ['06-01', '06-21'], hello: 'Happy Father\'s Day' },
+    { id: 'new-baby', name: 'New baby', state: 'live', featured: null, hello: 'Welcome, little one' },
+    { id: 'wedding', name: 'Wedding', state: 'live', featured: null, hello: 'Congratulations' },
+    { id: 'graduation', name: 'Graduation', state: 'live', featured: ['05-13', '05-31'], hello: 'Congratulations, graduate' },
+    { id: 'get-well', name: 'Get well', state: 'live', featured: null, hello: 'Get well soon' },
+    { id: 'miss-you', name: 'Thinking of you', state: 'live', featured: null, hello: 'Thinking of you' },
+    { id: 'new-year', name: 'New Year', state: 'live', featured: null, hello: 'Happy New Year' },
+    { id: 'hanukkah', name: 'Hanukkah', state: 'live', featured: null, hello: 'Happy Hanukkah' },
+    { id: 'diwali', name: 'Diwali', state: 'live', featured: null, hello: 'Happy Diwali' },
+    { id: 'eid', name: 'Eid', state: 'live', featured: null, hello: 'Eid Mubarak' },
+    { id: 'easter', name: 'Easter', state: 'live', featured: null, hello: 'Happy Easter' },
+    { id: 'halloween', name: 'Halloween', state: 'live', featured: null, hello: 'Happy Halloween' },
+    { id: 'thanksgiving', name: 'Thanksgiving', state: 'live', featured: null, hello: 'Happy Thanksgiving' },
+    // ...and after these, every other occasion the template library makes (library/occasions.js), live, never featured
   ],
   defaultOccasion: 'birthday',         // when no occasion is featured by the calendar
 
@@ -83,6 +84,11 @@ const config = {
     'pay', 'buy', 'checkout', 'stripe', 'webhook', 'oauth', 'well-known', 'robots', 'sitemap', 'favicon', 'icon', 'index', 'home', 'landing', 'app', 'play', 'share', 'send', 'templates', 'template',
     'occasions', 'occasion', 'christmas', 'birthday', 'love', 'thanks', 'congrats', 'glyphh', 'www', 'null', 'undefined', 'test', 'demo', 'example', 'examples', 'status', 'blog', 'press', 'jobs', 'faq'],
 };
+
+// the library's other occasions, in its order (an occasion only goes live once it has templates: server.js occasions())
+require('./library/occasions.js').forEach(function (o) {
+  if (!config.occasions.some(function (x) { return x.id === o.id; })) config.occasions.push({ id: o.id, name: o.name, state: 'live', featured: null, hello: o.hello });
+});
 
 if (env.CONFIG_OVERRIDE) {
   const merge = function (into, from) { Object.keys(from).forEach(function (k) { if (from[k] && typeof from[k] === 'object' && !Array.isArray(from[k]) && into[k] && typeof into[k] === 'object') merge(into[k], from[k]); else into[k] = from[k]; }); };

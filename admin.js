@@ -113,13 +113,13 @@ module.exports = function (d) {
   async function templates(a) {
     const used = {}; (await db.all("SELECT template, COUNT(*) AS n, SUM(paid) AS paid FROM cards GROUP BY template", [])).forEach(function (r) { used[r.template] = r; });
     const SET = d.settings(), text = str(a.q, 60).toLowerCase();
-    let items = d.Templates.list.map(function (t) { const s = SET['template:' + t.id] || {}; return { id: t.id, name: t.name, occasion: t.occasion, family: t.family, off: !!s.off, order: typeof s.order === 'number' ? s.order : (t.order || 500), carols: used[t.id] ? used[t.id].n : 0, paid: used[t.id] ? used[t.id].paid || 0 : 0 }; });
+    let items = d.catalog().map(function (t) { const s = SET['template:' + t.id] || {}; return { id: t.id, name: t.name, occasion: t.occasion, family: t.family, off: !!s.off, order: typeof s.order === 'number' ? s.order : (t.order || 500), carols: used[t.id] ? used[t.id].n : 0, paid: used[t.id] ? used[t.id].paid || 0 : 0 }; });
     if (text) items = items.filter(function (t) { return (t.id + ' ' + t.name + ' ' + t.family).toLowerCase().indexOf(text) >= 0; }); if (a.occasion) items = items.filter(function (t) { return t.occasion === a.occasion; }); if (a.family) items = items.filter(function (t) { return t.family === a.family; }); if (typeof a.off === 'boolean') items = items.filter(function (t) { return t.off === a.off; });
     items.sort(function (x, y) { return x.order - y.order || (x.name < y.name ? -1 : 1); });
     const pages = Math.max(1, Math.ceil(items.length / PER)), page = Math.max(1, Math.min(pages, Math.floor(+a.page) || 1));
     return { items: items.slice((page - 1) * PER, page * PER), total: items.length, page: page, pages: pages };
   }
-  function occasionsList() { const o = d.occasions(); return { featured_today: o.featured, default_when_none: CFG.defaultOccasion, items: o.list.map(function (x) { return Object.assign({}, x, { templates: d.Templates.list.filter(function (t) { return t.occasion === x.id; }).length }); }) }; }
+  function occasionsList() { const o = d.occasions(); return { featured_today: o.featured, default_when_none: CFG.defaultOccasion, items: o.list.map(function (x) { return Object.assign({}, x, { templates: d.catalog().filter(function (t) { return t.occasion === x.id; }).length }); }) }; }
   function prices() { const SET = d.settings(); return { prices_are_set_in: 'config.js (a deploy changes them)', currency: CFG.currency, packs: CFG.packs.map(function (p) { return { id: p.id, credits: p.credits, price_usd: p.cents ? p.cents / 100 : null, buyable: p.cents > 0 }; }), every_buy_says: CFG.finalSale, limits: Object.keys(CFG.limits).map(function (k) { return { name: k, value: d.limit(k), config: CFG.limits[k], overridden: !!(SET.limits && typeof SET.limits[k] === 'number') }; }) }; }
   async function audit(a) {
     const where = [], args = [];
@@ -166,7 +166,7 @@ module.exports = function (d) {
     if (name === 'admin_occasion') {
       const o = CFG.occasions.find(function (x) { return x.id === a.id; }); if (!o) said('There is no such occasion.');
       const s = Object.assign({}, d.settings()['occasion:' + o.id]), MD = /^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
-      if (a.state !== undefined) { if (['live', 'soon', 'off'].indexOf(a.state) < 0) said('The state is live, soon or off.'); if (a.state === 'live' && !d.Templates.list.some(function (t) { return t.occasion === o.id; })) said('That occasion has no templates yet, so it cannot be live.'); s.state = a.state; }
+      if (a.state !== undefined) { if (['live', 'soon', 'off'].indexOf(a.state) < 0) said('The state is live, soon or off.'); if (a.state === 'live' && !d.catalog().some(function (t) { return t.occasion === o.id; })) said('That occasion has no templates yet, so it cannot be live.'); s.state = a.state; }
       if (a.clear) s.featured = null; else if (a.from !== undefined || a.to !== undefined) { if (!MD.test(a.from || '') || !MD.test(a.to || '')) said('Dates are MM-DD, like 11-01 and 12-31.'); s.featured = [a.from, a.to]; }
       await d.setSetting('occasion:' + o.id, s); return Object.assign({ done: true }, occasionsList().items.find(function (x) { return x.id === o.id; }));
     }

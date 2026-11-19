@@ -2508,6 +2508,45 @@
     borders: ['bunting', 'dots', 'vine', 'hearts', 'goldline', 'film', 'stitch', 'scallop', 'none']
   };
 
+  /* =====================================================================================================
+     THE LIBRARY'S DOOR. The blocks above are the launch set and are never touched. Every later block lives in a
+     pack (art/pack-*.js) and comes in through CarolArt.add: same registries, same dispatchers, same drawing
+     conventions. A block is never replaced: a redesign gets a new name, so a carol made with the old one
+     still draws the old one. `kit` is the helpers above, for the packs to draw in the same hand.
+       add('character', name, function (c, m, p) {}, { wide: 0.9 })              100 units tall, feet at (0, 0)
+       add('prop', name, function (c, t, p, o) {})                               centred at (0, 0), about 100 across
+       add('frame', name, function (c, img, w, h, t, p, o, u) { return rect; }, { aspect: 0.8, shaped: true, flex: true })
+       add('backdrop', name, function (c, W, H, t, p, o, u) {}, { variants: ['day', 'dusk', 'night'] })   o.variant; also named name:dusk ...
+       add('particles', name, function (c, W, H, t, p, o, u) {})
+       add('border', name, function (c, W, H, t, p, o, b) {})                    b = 4% of the short side
+     ===================================================================================================== */
+  var REG = { character: CH, prop: PR, frame: FR, backdrop: BD, particles: PT, border: BO };
+  var LISTS = { character: CarolArt.characters, prop: CarolArt.props, frame: CarolArt.frames, backdrop: CarolArt.backdrops, particles: CarolArt.particleNames, border: CarolArt.borders };
+  CarolArt.meta = { character: {}, prop: {}, frame: {}, backdrop: {}, particles: {}, border: {} };
+  CarolArt.launch = { character: Object.keys(CH), prop: Object.keys(PR), frame: Object.keys(FR), backdrop: Object.keys(BD), particles: Object.keys(PT), border: Object.keys(BO) };
+  CarolArt.add = function (kind, name, fn, meta) {
+    var reg = REG[kind], vs = meta && meta.variants, i;
+    if (!reg || typeof fn !== 'function' || !/^[a-z][a-z0-9]*$/.test(name)) throw new Error('CarolArt.add: bad ' + kind + ' "' + name + '"');
+    if (reg[name]) throw new Error('CarolArt.add: the ' + kind + ' "' + name + '" is there already (a block is never replaced: a redesign gets a new name)');
+    CarolArt.meta[kind][name] = meta || {};
+    if (kind === 'backdrop' && vs && vs.length) {
+      var wrap = function (v) { return function (c, W, H, t, p, o, u) { o.variant = v; return fn(c, W, H, t, p, o, u); }; };
+      reg[name] = wrap(vs[0]); LISTS[kind].push(name);
+      for (i = 0; i < vs.length; i++) { reg[name + ':' + vs[i]] = wrap(vs[i]); LISTS[kind].push(name + ':' + vs[i]); CarolArt.meta[kind][name + ':' + vs[i]] = meta; }
+    } else { reg[name] = fn; LISTS[kind].push(name); }
+    return fn;
+  };
+  CarolArt.has = function (kind, name) { return !!(REG[kind] && REG[kind][name]); };
+  CarolArt.kit = { TAU: TAU, PI: PI, hash: hash, rnd: rnd, clamp: clamp, num: num, frac: frac, P: P, rgbOf: rgbOf, shade: shade, alpha: alpha, mix: mix3,
+    F: F, E: E, dot: dot, rrp: rrp, R: R, Rn: Rn, L: L, Pg: Pg, ball: ball, starPath: starPath, heartPath: heartPath, shine: shine, twinkle: twinkle,
+    eyes: eyes, blush: blush, mouth: mouth, arm: arm, armAngles: armAngles, scarf: scarf, pom: pom, head: head, hairdo: hairdo, tabbyTail: tabbyTail,
+    pine: pine, flame: flame, bow: bow, wheel: wheel, steam: steam, giftBox: giftBox, cloud: cloud, litWindow: litWindow, smoke: smoke, paw: paw, bone: bone, crescent: crescent,
+    drawPhoto: drawPhoto, photoRect: photoRect, photoCircle: photoCircle, ringStroke: ringStroke, lightString: lightString, chain: chain, archPath: archPath,
+    vgrad: vgrad, vgrad2: vgrad2, vignette: vignette, glow: glow, skyStars: skyStars, hill: hill, pinesOn: pinesOn, moonDisc: moonDisc, houseSil: houseSil, miniIcon: miniIcon,
+    bunting: bunting, auroraBands: auroraBands, bokeh: bokeh, ringClip: ringClip, edgeWalk: edgeWalk, icing: icing, flower: flower, burst: burst, flagRow: flagRow, bfly: bfly, bloom: bloom, leaf: leaf,
+    /* the outline every F() adds: its width in the current drawing space (0 = none). ow() reads it, ow(v) sets it; a block that changes it puts it back. */
+    ow: function (v) { if (v !== undefined) ow = v; return ow; } };
+
   //@@APPEND
   return CarolArt;
 });

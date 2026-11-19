@@ -21,7 +21,21 @@
   function call(path, data, method, key, raw) {
     const h = {}; if (key) h['Idempotency-Key'] = key;
     const o = raw ? { method: method || 'POST', headers: Object.assign({ 'Content-Type': raw.type }, h), body: raw.body } : data || method ? { method: method || 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, h), body: JSON.stringify(data || {}) } : { cache: 'no-store', headers: h };
-    return fetch(path, o).then(function (r) { seen(r.headers.get('X-Build')); return r.json().catch(function () { return { error: r.status >= 500 ? 'The server is restarting. Try again in a moment.' : 'That did not work. Try again.' }; }).then(function (j) { j.status = r.status; return j; }); });
+    return fetch(path, o).then(function (r) { seen(r.headers.get('X-Build')); return r.json().catch(function () { return { error: r.status >= 500 ? 'The server is restarting. Try again in a moment.' : 'That did not work. Try again.' }; }).then(function (j) { j.status = r.status; return keep(j); }); });
+  }
+  // TEMPLATES FROM THE LIBRARY: an answer may carry the definitions of the templates it names (defs, or card.defs).
+  // They are kept (CarolTemplates.add) once the art packs they draw with are loaded, so by the time the caller has the
+  // answer CarolTemplates.get(id) draws them. A pack is loaded once per page.
+  const packs = {};
+  function pack(name) {
+    if (!packs[name]) packs[name] = new Promise(function (ok) { const s = document.createElement('script'); s.async = false; s.src = '/art/' + name + '.js' + (BUILD ? '?v=' + BUILD : ''); s.onload = function () { ok(true); }; s.onerror = function () { delete packs[name]; ok(false); }; document.head.appendChild(s); });
+    return packs[name];
+  }
+  function keep(j) {
+    const defs = [].concat(j && j.defs || [], j && j.card && j.card.defs || []);
+    if (!defs.length || !root.CarolTemplates || typeof document === 'undefined') return j;
+    const need = {}; defs.forEach(function (t) { (t.packs || []).forEach(function (n) { if (/^[a-z0-9-]+$/.test(n)) need[n] = true; }); });
+    return Promise.all(Object.keys(need).sort().map(pack)).then(function () { defs.forEach(function (t) { root.CarolTemplates.add(t); }); return j; });
   }
   function read(path, n) {
     n = n || 0;

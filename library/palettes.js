@@ -1,0 +1,103 @@
+'use strict';
+// library/palettes.js : the palettes a library template may wear. Recipes name them by mode and mood, never by id;
+// an id is stable for ever (a row of the registry names it outright).
+//   bg, bg2   the two big backdrop colours (sky top and bottom, or wall and floor)
+//   ink       dark text, on paper          paper   a pale surface that carries ink
+//   accent, accent2   two saturated colours: plates that carry paper text, and decoration
+//   gold      a bright warm highlight, text on dark plates          snow   near-white lights
+// mode: light = a pale backdrop, mid = a saturated or mid-tone backdrop, dark = a dark backdrop.
+// colour: the one word a person would call it. moods: what it suits (the occasion moods are the last nine).
+// Held to its rules by test/libdata.cjs (contrast of ink on paper, accents on paper, gold on dark, and the rest).
+function P(id, name, mode, colour, moods, bg, bg2, ink, accent, accent2, gold, snow, paper) {
+  return { id: id, name: name, mode: mode, colour: colour, moods: moods.split(' '), bg: bg, bg2: bg2, ink: ink, accent: accent, accent2: accent2, gold: gold, snow: snow, paper: paper };
+}
+module.exports = [
+  /* ---------------------------------------------------- light ---------------------------------------------------- */
+  P('sunset-pop', 'Sunset Pop', 'light', 'orange', 'sunset warm bright summer', '#ffb8a0', '#ffe0a8', '#3a1c2a', '#c7347a', '#7a3fa8', '#ffc93c', '#ffffff', '#fff8ee'),
+  P('cotton-candy', 'Cotton Candy', 'light', 'pink', 'pastel candy kids', '#ffd1e6', '#cfe8ff', '#3b2350', '#e23b8c', '#3f8fd6', '#ffd65a', '#ffffff', '#fffafd'),
+  P('mint-sorbet', 'Mint Sorbet', 'light', 'green', 'pastel spring candy cool', '#c9f2df', '#f4fbe6', '#17392f', '#e5484d', '#1f9d8b', '#ffcf4d', '#ffffff', '#fffdf6'),
+  P('sky-picnic', 'Sky Picnic', 'light', 'blue', 'summer bright kids cool', '#9fd4f5', '#eaf7ff', '#1c3350', '#e8404a', '#2b9a66', '#ffcf40', '#ffffff', '#ffffff'),
+  P('lemon-zest', 'Lemon Zest', 'light', 'yellow', 'bright summer kids', '#ffe66b', '#fff6c4', '#33270f', '#e2462b', '#1f8f7a', '#ffd23f', '#ffffff', '#fffdf0'),
+  P('lavender-haze', 'Lavender Haze', 'light', 'purple', 'pastel romantic spring cool', '#dccbf7', '#f3ecff', '#2c1f4a', '#7a45c9', '#d6437f', '#ffd76a', '#ffffff', '#fdfaff'),
+  P('blossom', 'Blossom', 'light', 'pink', 'pastel spring romantic', '#ffe1dc', '#fff7ea', '#4a1f2c', '#d83a5c', '#4f9a5e', '#f6c453', '#ffffff', '#fffaf7'),
+  P('sage-linen', 'Sage Linen', 'light', 'green', 'muted earth elegant', '#d9e0d0', '#eef0e6', '#2b3328', '#5c7a5a', '#8a6f58', '#e6c877', '#fdfdf8', '#f8f6ee'),
+  P('dove-grey', 'Dove Grey', 'light', 'neutral', 'muted modern cool', '#e0e0e2', '#f3f3f4', '#2a2e36', '#7a5a7f', '#5f7388', '#e3cf9b', '#ffffff', '#f8f8f6'),
+  P('warm-stone', 'Warm Stone', 'light', 'neutral', 'muted earth warm', '#e5dccf', '#f4eee4', '#332b24', '#8a6a52', '#6f7f73', '#e8c98a', '#fffdf8', '#fbf7f0'),
+  P('dusk-mist', 'Dusk Mist', 'light', 'blue', 'muted cool winter', '#cfd8e8', '#eceff6', '#232d44', '#4f6694', '#7d6a94', '#ecd28f', '#ffffff', '#f7f8fb'),
+  P('ivory-navy', 'Ivory and Navy', 'light', 'neutral', 'gold-navy elegant modern', '#f6eedb', '#fffaf0', '#1a1f33', '#24406e', '#a67c1f', '#f0c44c', '#ffffff', '#fffcf4'),
+  P('lucky-day', 'Lucky Day', 'light', 'red', 'red-gold warm spring', '#ffe6c7', '#fff5e0', '#3a1410', '#d0211c', '#b5771a', '#ffc83d', '#ffffff', '#fff9ec'),
+  P('frost-blue', 'Frost Blue', 'light', 'blue', 'blue-white winter cool', '#c2defa', '#f2f9ff', '#142a52', '#1f55b5', '#4c8fd9', '#f3d27a', '#ffffff', '#ffffff'),
+  P('silver-light', 'Silver Light', 'light', 'blue', 'blue-silver winter elegant', '#dfe5ee', '#f5f7fb', '#16233f', '#2a4f9c', '#7c8798', '#e6dfc8', '#ffffff', '#fbfcfe'),
+  P('shamrock-light', 'Shamrock Light', 'light', 'green', 'green-gold spring bright', '#d8f0c8', '#f4fbe8', '#14301c', '#1e8a3c', '#b07d14', '#f5c842', '#ffffff', '#fdfdf2'),
+  P('harvest-wheat', 'Harvest Wheat', 'light', 'brown', 'autumn earth warm', '#ecc27a', '#fbe6c0', '#3a2212', '#9c3a1c', '#5f7a1f', '#f3b83c', '#fffaf0', '#fff8ea'),
+  P('pumpkin-light', 'Pumpkin Light', 'light', 'orange', 'orange-black autumn spooky', '#ffc078', '#ffe6bf', '#1a1410', '#d9480f', '#2b2430', '#ffb72e', '#ffffff', '#fff7e8'),
+  P('marigold-day', 'Marigold Day', 'light', 'yellow', 'marigold bright warm', '#ffd45e', '#fff0bd', '#3a1730', '#d4266e', '#e2571a', '#ffc21f', '#ffffff', '#fffbe8'),
+  P('valentine-blush', 'Valentine Blush', 'light', 'pink', 'pink-red romantic candy', '#ffb3c6', '#ffe3ea', '#4a0f22', '#d81e4a', '#e0457e', '#ffd27a', '#ffffff', '#fff5f6'),
+  P('kinara-day', 'Kinara Day', 'light', 'gold', 'red-black-green warm', '#f2e3ae', '#fbf3d4', '#161310', '#c5221f', '#1e7a3a', '#f2b632', '#ffffff', '#fffbf0'),
+  P('rainbow-paper', 'Rainbow Paper', 'light', 'yellow', 'rainbow kids bright', '#fff6cf', '#d9f1ff', '#26324f', '#e5383b', '#2f6fd6', '#ffd23f', '#ffffff', '#ffffff'),
+  P('seaside', 'Seaside', 'light', 'teal', 'ocean summer bright', '#83d4e1', '#fbeccb', '#123844', '#0e6f9e', '#e2603e', '#ffcf5c', '#ffffff', '#fffaf0'),
+  P('malt-shop', 'Malt Shop', 'light', 'teal', 'retro candy pastel', '#9fe0d8', '#fff1d6', '#25323a', '#e2466b', '#2b6f8f', '#ffcc4d', '#ffffff', '#fff9ee'),
+  P('newsprint', 'Newsprint', 'light', 'neutral', 'modern sporty retro', '#f2f2ee', '#ffffff', '#111111', '#e5322d', '#1d1d1f', '#ffcf33', '#ffffff', '#ffffff'),
+  P('candy-corn', 'Candy Corn', 'light', 'orange', 'orange-black candy kids spooky', '#fff8ef', '#ffb866', '#1f140d', '#e8620a', '#2a1c3a', '#ffd43b', '#ffffff', '#fffdf6'),
+  /* ----------------------------------------------------- mid ----------------------------------------------------- */
+  P('coral-reef', 'Coral Reef', 'mid', 'orange', 'ocean summer bright sunset', '#ff7f6a', '#ffb38a', '#3b1420', '#0f6f78', '#a3264f', '#ffe08a', '#ffffff', '#fff6ec'),
+  P('turf', 'Turf', 'mid', 'green', 'sporty bright summer', '#5ab033', '#9bd45a', '#0f2a18', '#17306e', '#c9302a', '#ffd43b', '#ffffff', '#ffffff'),
+  P('royal-court', 'Royal Court', 'mid', 'blue', 'sporty bright', '#3a7bea', '#6fb1ff', '#0c1b3d', '#d9282f', '#0f2f7a', '#ffd23f', '#ffffff', '#ffffff'),
+  P('bubblegum', 'Bubblegum', 'mid', 'pink', 'candy kids bright', '#ff6fb0', '#ffb0d6', '#3d0f2e', '#7b2fd0', '#0e8f9a', '#ffe45e', '#ffffff', '#fff7fb'),
+  P('grape-soda', 'Grape Soda', 'mid', 'purple', 'candy kids', '#a66fe0', '#c79bff', '#1f1040', '#e0356f', '#1f7fb8', '#ffd95a', '#ffffff', '#fbf7ff'),
+  P('teal-lagoon', 'Teal Lagoon', 'mid', 'teal', 'ocean jewel cool', '#17879a', '#7fd8c8', '#0b2c33', '#e2503a', '#14517a', '#ffd76a', '#ffffff', '#f7fffb'),
+  P('ocean-swell', 'Ocean Swell', 'mid', 'blue', 'ocean summer cool', '#2a7fb5', '#7fe0c8', '#0c2340', '#123a7a', '#c9462c', '#ffe38a', '#ffffff', '#f4fbff'),
+  P('terracotta', 'Terracotta', 'mid', 'orange', 'earth warm autumn', '#c9683f', '#e89f6a', '#33170d', '#1f6f6a', '#7a2a1c', '#ffd98a', '#fffaf0', '#fff3df'),
+  P('olive-grove', 'Olive Grove', 'mid', 'green', 'earth forest', '#8a9a4a', '#c9cf8a', '#232a12', '#b3401f', '#4a5f1f', '#ffe08a', '#fffdf0', '#fbf7e6'),
+  P('mustard-70s', 'Mustard Seventies', 'mid', 'yellow', 'retro earth autumn warm', '#cf8f17', '#f0c35a', '#33200c', '#a3391c', '#2f6f6a', '#ffe9a8', '#fffaf0', '#fff3d6'),
+  P('sunset-strip', 'Sunset Strip', 'mid', 'purple', 'sunset retro', '#b659a3', '#ff9a5a', '#3a0f2a', '#2f2a8a', '#c9302a', '#ffe27a', '#ffffff', '#fff5ee'),
+  P('dusty-rose', 'Dusty Rose', 'mid', 'pink', 'muted romantic', '#c79a9f', '#e3c9c6', '#3a2328', '#8a4a5c', '#5f6f7a', '#f3dfb0', '#fffdfb', '#fbf3ee'),
+  P('slate-dusk', 'Slate Dusk', 'mid', 'neutral', 'muted cool', '#8891a0', '#c0c6d0', '#1f2838', '#3f547a', '#6a5a80', '#f0deb0', '#ffffff', '#f6f6f2'),
+  P('eucalyptus', 'Eucalyptus', 'mid', 'green', 'muted forest', '#8c9f8a', '#c3cfbf', '#1f2a22', '#3f6a55', '#7a6a55', '#efe0b5', '#fdfdf8', '#f6f5ec'),
+  P('lucky-red', 'Lucky Red', 'mid', 'red', 'red-gold warm bright', '#e63b2e', '#f0662f', '#3a0b08', '#8f1414', '#a8650f', '#ffd24a', '#fff8e6', '#fff3d6'),
+  P('emerald-isle', 'Emerald Isle', 'mid', 'green', 'green-gold jewel', '#0f9f7a', '#57c98a', '#0c2a17', '#0f5f33', '#a8700f', '#ffd24a', '#ffffff', '#fbf8e3'),
+  P('pumpkin-glow', 'Pumpkin Glow', 'mid', 'orange', 'orange-black autumn spooky', '#d9620f', '#ffb03d', '#1a120c', '#241a2e', '#6a2fa0', '#ffe08a', '#fff8ee', '#fff4e0'),
+  P('marigold-fest', 'Marigold Festival', 'mid', 'orange', 'marigold bright warm', '#ff9f1c', '#ffd75a', '#3a1530', '#c2185b', '#6a1b9a', '#ffe680', '#ffffff', '#fff8e1'),
+  P('valentine-rose', 'Valentine Rose', 'mid', 'pink', 'pink-red romantic candy', '#ee4a78', '#ff9ab5', '#3a0a18', '#9c0f3a', '#c41f2f', '#ffd9a0', '#ffffff', '#fff0f2'),
+  P('unity-green', 'Unity Green', 'mid', 'green', 'red-black-green', '#3a8f3a', '#6fb85f', '#121210', '#c5221f', '#1a1a1a', '#f5c33b', '#fffaf0', '#fbf3df'),
+  P('champagne-gold', 'Champagne Gold', 'mid', 'gold', 'gold-navy elegant', '#dfb84f', '#f0d68a', '#121a36', '#1c2f6b', '#7a5a0f', '#fff0b0', '#ffffff', '#fffaf0'),
+  P('windbreaker-90s', 'Windbreaker Nineties', 'mid', 'teal', 'retro sporty neon', '#2fc4b2', '#8fe6d0', '#1a1040', '#6a2fb0', '#e0357a', '#ffe14a', '#ffffff', '#f9fffd'),
+  P('rainbow-sky', 'Rainbow Sky', 'mid', 'blue', 'rainbow kids bright', '#4fc0f0', '#fff0b0', '#14234a', '#e5343f', '#7b3fd1', '#ffd83d', '#ffffff', '#ffffff'),
+  P('prism', 'Prism', 'mid', 'purple', 'rainbow modern neon', '#7466f2', '#3fc4e0', '#1f0f3a', '#e8451e', '#0d8fbf', '#fee440', '#ffffff', '#fff9ff'),
+  P('candle-blue', 'Candle Blue', 'mid', 'blue', 'blue-white winter', '#5a9be8', '#b0d4ff', '#0c1b45', '#123f9a', '#2f6fd0', '#ffe9a0', '#ffffff', '#ffffff'),
+  P('steel-frost', 'Steel Frost', 'mid', 'blue', 'blue-silver winter cool modern', '#4f78c0', '#b9c9e6', '#101c38', '#1f3f8a', '#4f5f7a', '#e6ebf2', '#ffffff', '#f6f8fb'),
+  P('sterling-blue', 'Sterling and Blue', 'mid', 'neutral', 'blue-silver elegant winter', '#b4bccb', '#dfe4ec', '#101c38', '#1f3f9a', '#5a6a85', '#e9edf4', '#ffffff', '#f8f9fc'),
+  P('woven-mat', 'Woven Mat', 'mid', 'brown', 'red-black-green earth warm', '#c9924f', '#e8bd7a', '#15110d', '#b81f1c', '#1e6a34', '#ffe08a', '#fffaf0', '#fbf3df'),
+  P('rangoli', 'Rangoli', 'mid', 'pink', 'marigold bright jewel', '#d6369a', '#f06aa8', '#2a0a30', '#5a1b9a', '#0f7a6a', '#ffd23f', '#ffffff', '#fff8e8'),
+  /* ----------------------------------------------------- dark ---------------------------------------------------- */
+  P('midnight-gold', 'Midnight Gold', 'dark', 'blue', 'gold-navy elegant night', '#0f1b3d', '#24376b', '#0b1226', '#2f55b8', '#a67c1f', '#f5cf5a', '#ffffff', '#fff8e6'),
+  P('black-tie', 'Black Tie', 'dark', 'black', 'gold-navy elegant night modern', '#111318', '#1f2a4a', '#0c0d10', '#8a6a1c', '#3a4f8a', '#f0d58a', '#ffffff', '#faf6ea'),
+  P('lunar-night', 'Lunar Night', 'dark', 'red', 'red-gold jewel warm', '#5a0c12', '#8f1a1a', '#2a0606', '#d1281f', '#a86a0f', '#ffcf4a', '#fff6e0', '#fff1d0'),
+  P('candle-night', 'Candle Night', 'dark', 'blue', 'blue-white night winter', '#0c1f5a', '#1f3f9a', '#081233', '#2f6fe0', '#5a8fd0', '#ffe9a8', '#ffffff', '#ffffff'),
+  P('midnight-silver', 'Midnight Silver', 'dark', 'blue', 'blue-silver night winter elegant', '#101a33', '#2a3a5c', '#0a1022', '#6f7f99', '#3f66b8', '#dfe5ee', '#ffffff', '#f4f6fa'),
+  P('unity-night', 'Unity Night', 'dark', 'black', 'red-black-green night', '#141210', '#2a2420', '#0f0d0b', '#1f8a40', '#c5221f', '#f2b632', '#fff8e6', '#fbf3df'),
+  P('clover-night', 'Clover Night', 'dark', 'green', 'green-gold forest jewel', '#0c3a22', '#17603a', '#06200f', '#1f9a50', '#a8780f', '#ffd24a', '#ffffff', '#fbf8e3'),
+  P('crescent-teal', 'Crescent Teal', 'dark', 'teal', 'green-gold jewel night elegant', '#0b3b3f', '#145f5f', '#062326', '#a8780f', '#17877a', '#f6d16a', '#ffffff', '#fdf7e3'),
+  P('haunted', 'Haunted', 'dark', 'black', 'orange-black spooky night', '#17121f', '#33204a', '#0d0a12', '#d9540f', '#6f3fb0', '#ffb52e', '#fff6e6', '#fff0d9'),
+  P('witching-hour', 'Witching Hour', 'dark', 'purple', 'spooky night neon', '#24103f', '#4a1f7a', '#150a26', '#3f8f1f', '#c2409a', '#ffc64a', '#f6fff0', '#f9f3ff'),
+  P('diwali-night', 'Festival Night', 'dark', 'purple', 'marigold jewel night', '#1a1250', '#3f1f7a', '#100a30', '#e0591a', '#c2185b', '#ffc21f', '#fff8e6', '#fff3d0'),
+  P('velvet-rose', 'Velvet Rose', 'dark', 'red', 'pink-red romantic jewel', '#4a0a24', '#8a1740', '#2a0614', '#d81e4a', '#e0457e', '#ffcf9a', '#fff6f6', '#fff0f2'),
+  P('neon-arcade', 'Neon Arcade', 'dark', 'purple', 'neon retro night', '#120a2e', '#2a1260', '#0c0720', '#e61f8f', '#0f9fd6', '#ffe14a', '#ffffff', '#f6f0ff'),
+  P('cyber-lime', 'Cyber Lime', 'dark', 'black', 'neon modern night', '#0a1414', '#10302f', '#071010', '#7a3ff0', '#0f9f8a', '#eaff4a', '#ffffff', '#f2fff9'),
+  P('synthwave', 'Synthwave', 'dark', 'purple', 'neon retro sunset', '#1f0f5a', '#8f1f8a', '#120833', '#0f8fb8', '#e0357a', '#ffcf3d', '#ffffff', '#f8f0ff'),
+  P('deep-ocean', 'Deep Ocean', 'dark', 'blue', 'ocean night cool', '#06283d', '#0f4f6f', '#041826', '#0f8fa8', '#e2603e', '#ffd98a', '#ffffff', '#f0fbff'),
+  P('moss-lodge', 'Moss Lodge', 'dark', 'green', 'forest earth autumn', '#1f2a1a', '#3a4a2a', '#121a0f', '#6a8a24', '#b3501f', '#f0c75e', '#fffaf0', '#f8f2df'),
+  P('espresso', 'Espresso', 'dark', 'brown', 'earth warm autumn', '#2a1a12', '#5a3620', '#1a0f0a', '#c2501c', '#6f7f2f', '#ffc65a', '#fff6e6', '#fff0d2'),
+  P('charcoal-calm', 'Charcoal Calm', 'dark', 'neutral', 'muted modern', '#2e2b2a', '#4c4643', '#191716', '#8f7458', '#5f7a99', '#e8d5a3', '#ffffff', '#f4f2ec'),
+  P('dusk-indigo', 'Dusk Indigo', 'dark', 'blue', 'muted night cool', '#252a5c', '#474d8f', '#161a30', '#6f7fb8', '#9a7a9f', '#f0dcae', '#ffffff', '#f5f3f0'),
+  P('evergreen-hush', 'Evergreen Hush', 'dark', 'green', 'muted forest winter', '#1a3328', '#335a47', '#121c19', '#5f8f7a', '#8a8060', '#ead9a8', '#ffffff', '#f5f4ea'),
+  P('blackout', 'Blackout', 'dark', 'black', 'sporty modern night', '#151515', '#303030', '#0d0d0d', '#2f5fd0', '#d9261f', '#ffd400', '#ffffff', '#ffffff'),
+  P('afterglow', 'Afterglow', 'dark', 'purple', 'sunset warm', '#4a1040', '#c8452a', '#1f0a1c', '#d6336c', '#e0541a', '#ffc95a', '#fff6ea', '#fff1e0'),
+  P('rainbow-night', 'Rainbow Night', 'dark', 'blue', 'rainbow night kids', '#0f1a3a', '#3a1f6a', '#0a1022', '#e83f5f', '#1f9f9a', '#ffd447', '#ffffff', '#ffffff'),
+  P('winter-berry', 'Winter Berry', 'dark', 'blue', 'winter cool', '#15324a', '#2f5f7a', '#0f1a30', '#b01f45', '#2f8a5f', '#f5d68a', '#ffffff', '#f6f9ff'),
+  P('starlit-plum', 'Starlit Plum', 'dark', 'purple', 'romantic night jewel elegant', '#2a1238', '#5a2a5f', '#1a0a24', '#b8408a', '#7a5fc0', '#f3cf8a', '#ffffff', '#fbf3fa'),
+  P('graphite-coral', 'Graphite and Coral', 'dark', 'black', 'modern', '#1f2328', '#3a4048', '#121418', '#e8503f', '#2f8f9a', '#ffd27a', '#ffffff', '#f7f5f0'),
+  P('lacquer-black', 'Lacquer Black', 'dark', 'black', 'red-gold elegant night', '#1c0f0f', '#4a1414', '#120808', '#d1281f', '#b0851f', '#ffcf4a', '#fff6e0', '#fff1d0'),
+  P('cobalt-white', 'Cobalt and White', 'dark', 'blue', 'blue-white bright winter', '#1f48b8', '#3f72e0', '#081a4a', '#0a2266', '#5a9be8', '#ffe9a8', '#ffffff', '#ffffff'),
+  P('midnight-heart', 'Midnight Heart', 'dark', 'black', 'pink-red romantic night', '#1a1216', '#3a1826', '#160a12', '#e0356f', '#c41f2f', '#ffcf9a', '#fff6f6', '#fff0f2')
+];
