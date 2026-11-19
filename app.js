@@ -145,6 +145,7 @@
       const shut = function () { m.remove(); ac.setAttribute('aria-expanded', 'false'); D.removeEventListener('click', away); D.removeEventListener('keydown', esc); }, away = function (ev) { if (!m.contains(ev.target)) shut(); }, esc = function (ev) { if (ev.key === 'Escape') { shut(); ac.focus(); } };
       const m = h('div', { class: 'menu', role: 'menu' }, h('div', { class: 'who' }, h('b', { text: u.name || 'Your account' }), h('span', { text: u.email || '' })),
         h('button', { role: 'menuitem', text: 'My carols', onclick: function () { shut(); go('/make'); } }), h('button', { role: 'menuitem', text: 'Get carol credits', onclick: function () { shut(); pay(); } }),
+        h('a', { role: 'menuitem', href: '/#claude', text: 'Use Claude' }),   // connector: how to make carols from Claude (the landing page's section)
         h('a', { role: 'menuitem', href: 'mailto:' + S.cfg.support, text: 'Help: ' + S.cfg.support }), h('button', { role: 'menuitem', text: 'Sign out', onclick: async function () { await SAC.call('/api/auth/out', {}); location.href = '/'; } }));
       $('.app-head').appendChild(m); ac.setAttribute('aria-expanded', 'true'); $('button', m).focus(); D.addEventListener('click', away); D.addEventListener('keydown', esc);
     };
@@ -779,5 +780,6 @@
     S.me = me; S.cfg = me.config; S.user = me.user; season(); header();
     const q = new URLSearchParams(location.search); if (S.user && q.get('paid')) await paidBack(q);
     route();
+    if (S.user && q.get('buy')) pay();   // connector: the link Claude gives when a carol needs a credit opens the packs
   })();
 })();

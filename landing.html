@@ -118,6 +118,38 @@
   </div>
 </section>
 
+<!-- connector:begin  "Make it with Claude": the player's connector (connect.js). Its few styles are here, so style.css is untouched. -->
+<section class="sec alt" id="claude">
+  <style>
+    #claude .cl-say { margin: 0 0 26px; padding: 22px 24px; border-radius: 22px; background: linear-gradient(150deg, var(--plum2), var(--night)); color: var(--on-dark); font: 400 clamp(19px, 4.6vw, 24px)/1.4 Georgia, serif; text-wrap: pretty; }
+    #claude .cl-say small { display: block; margin-top: 10px; font: 600 12.5px/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--gold); }
+    #claude .step h3 { font-size: 22px; }
+    #claude code, #claude pre { font: 600 15px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+    #claude code { display: inline-block; margin-top: 6px; padding: 7px 12px; border-radius: 10px; background: var(--night); color: var(--on-dark); user-select: all; }
+    #claude pre { margin: 10px 0 0; padding: 16px 18px; border-radius: 16px; background: var(--night); color: var(--on-dark); white-space: pre-wrap; user-select: all; }
+    #claude .cl-more { margin-top: 26px; color: var(--muted); max-width: 44em; }
+  </style>
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Make it with Claude</span>
+      <h2>Or just ask Claude for one.</h2>
+      <p>If you use Claude, add {{name}} to it and make a whole carol by talking. It finds a look, writes the words with you, shows you the card as it changes, and asks you before anything is sung or sent.</p>
+    </div>
+    <p class="cl-say">&ldquo;Make a birthday carol for my sister Maya from me and the kids; funny; she just ran her first marathon.&rdquo;<small>Something you can say</small></p>
+    <div class="steps">
+      <article class="card step"><h3>Open Connectors</h3><p>In Claude: Settings, then Connectors, then Add custom connector.</p></article>
+      <article class="card step"><h3>Paste the address</h3><p>The connector's address is<br><code>{{site}}/mcp</code></p></article>
+      <article class="card step"><h3>Sign in</h3><p>Sign in with the account your carols are in (or make one there and then), and allow it. Then say who the carol is for.</p></article>
+    </div>
+    <div class="cl-more">
+      <p>In Claude Code, one line adds it:</p>
+      <pre>claude mcp add --transport http send-a-carol {{site}}/mcp</pre>
+      <p style="margin-top:16px">Writing and previewing are free there too. Making the song uses one carol credit, and Claude asks you first. Photos are added on a page of ours that Claude hands you a link to.</p>
+    </div>
+  </div>
+</section>
+<!-- connector:end -->
+
 <section class="sec last" id="faq">
   <div class="wrap">
     <div class="sec-head">
