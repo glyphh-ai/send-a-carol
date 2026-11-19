@@ -15,6 +15,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 # the server
 COPY server.js config.js store.js brand.js agent.js song.js beat.js render.js email.js admin.js ./
+# the player's connector: its tools, its sign-in, its rules and pages, and the MCP Apps bridge its panel carries
+COPY connect.js oauth.js connect-rules.js connect-ui.js mcp-app.js ./
 # the pages and what they load (the build id is a hash of exactly these); the engine draws the video on the server too
 COPY landing.html app.html card.html admin.html art.js templates.js engine.js fonts.js net.js app.js card.js landing.js admin-ui.js style.css ./
 COPY legal ./legal

@@ -83,7 +83,12 @@ const SCHEMA = `
   CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT, at BIGINT);
   CREATE TABLE IF NOT EXISTS admin_log (id TEXT PRIMARY KEY, at BIGINT, who TEXT, via TEXT, tool TEXT, args TEXT, reason TEXT, result TEXT, ok INTEGER DEFAULT 1);
   CREATE INDEX IF NOT EXISTS admin_log_at ON admin_log (at);
-`;
+  CREATE TABLE IF NOT EXISTS oauth_clients (id TEXT PRIMARY KEY, name TEXT, redirects TEXT, created BIGINT);
+  CREATE TABLE IF NOT EXISTS oauth_codes (code TEXT PRIMARY KEY, client TEXT, uid TEXT, redirect TEXT, challenge TEXT, expires BIGINT);
+  CREATE TABLE IF NOT EXISTS oauth_tokens (hash TEXT PRIMARY KEY, uid TEXT, client TEXT, kind TEXT, expires BIGINT);
+  CREATE INDEX IF NOT EXISTS oauth_tokens_uid ON oauth_tokens (uid);
+  CREATE TABLE IF NOT EXISTS oauth_asks (id TEXT PRIMARY KEY, q TEXT, expires BIGINT);
+`;   // (the four oauth_ tables are the connector's sign-in: oauth.js)
 // columns added since a table was first made: [table, column, type]
 //   cards.rendered  what the video in storage was made from (a hash): the card knows when its video is older than its last edit
 //   jobs.owner, jobs.lease  which machine is running a job, and until when it may (it renews while it works)
@@ -607,6 +612,13 @@ const gone = function (res) { res.writeHead(404, { 'Content-Type': 'text/html; c
 
 const mail = require('./email.js')({ db: db, ready: ready, tooMany: tooMany, json: json, body: body, page: page, env: env, accountOf: accountOf, enter: signInByEmail });
 const Admin = require('./admin.js')({ db: db, CFG: CFG, Templates: Templates, catalog: catalog, occasions: occasions, setSetting: setSetting, settings: function () { return SET; }, limit: limit, grant: grant, balance: balance, removeCard: removeCard, removeMedia: removeMedia, kick: kick, note: note, str: str, now: now, rid: rid, env: env });
+// connector:begin  THE PLAYER'S CONNECTOR (connect.js): a person's own Claude makes carols at /mcp, signed in through
+// oauth.js; its upload and preview pages are under /mcp/. It asks this server's own API in this process (handle), as
+// that person, so every check and limit is the site's. The admin's tools stay below, behind ?admin=<key>.
+const Connect = require('./connect.js')({ db: db, ready: ready, CFG: CFG, env: env, root: ROOT, build: function () { return BUILD; }, handle: function (q, s) { return handle(q, s); }, sessionCookie: sessionCookie, accountOf: accountOf, tooMany: tooMany, page: page, mail: mail, Templates: Templates, Engine: Engine, Render: Render,
+  occasions: occasions, tplOff: tplOff, limit: limit, spendDay: spendDay, freeSlug: freeSlug, slugify: slugify, docOf: docOf, saveDoc: saveDoc, locked: locked, note: note, balance: balance, str: str });
+ROUTES.push.apply(ROUTES, Connect.ROUTES);
+// connector:end
 
 // ---------- the card's own page: /<card-name>, for whoever it was sent to ----------
 async function cardBySlug(slug) { return SLUG.test(slug) && !slugProblem(slug) ?db.get("SELECT * FROM cards WHERE slug = ? AND state = 'ready'", [slug]) : null; }
@@ -842,6 +854,7 @@ function handle(req, res) {
   const url = new URL(req.url, 'http://x'), p = url.pathname, oops = function (e) { console.error(req.method, p, e.message); if (res.headersSent) return; if (e.said && e.code >= 400 && e.code < 600) return json(res, Object.assign({ error: e.message }, e.more), e.code); json(res, { error: 'Something went wrong on our side.' }, 500); };
   res.setHeader('X-Build', BUILD);   // on every answer: how a page that was loaded before a deploy finds out
   if (p === '/healthz') return ready.then(function () { return db.get('SELECT 1 AS ok'); }).then(function () { json(res, { ok: true, build: BUILD }); }, function (e) { console.error('healthz:', e.message); json(res, { ok: false, error: 'the database did not answer' }, 503); });
+  if (Connect.owns(req, url)) return Connect.handle(req, res, url).catch(oops);   // connector: /mcp without the admin's key, /mcp/*, /oauth/*, /.well-known/oauth-*
   if (p === '/mcp') return mcp(req, res, url).catch(oops);
   if (p.indexOf('/api/') === 0) return api(req, res, url).catch(oops);
   if (p === '/auth/link') return mail.handle(req, res, url).catch(oops);
@@ -867,7 +880,7 @@ function handle(req, res) {
 }
 
 // ---------- --check: will this build run on the real database? No port, no row changed. ----------
-const WORDS = new RegExp('DR' + 'OP\\s+(TABLE|COLUMN)|\\bREN' + 'AME\\b', 'i'), SERVER_FILES = ['server.js', 'email.js', 'admin.js'];
+const WORDS = new RegExp('DR' + 'OP\\s+(TABLE|COLUMN)|\\bREN' + 'AME\\b', 'i'), SERVER_FILES = ['server.js', 'email.js', 'admin.js', 'connect.js', 'oauth.js'];
 function statements(text) {
   const out = [], re = /\bdb\.(?:get|all|run)\(\s*(['"])((?:\\.|(?!\1)[^\\])*)\1\s*([,)+])/g; let m;
   while ((m = re.exec(text))) if (m[3] !== '+') out.push(m[2].replace(/\\(['"\\])/g, '$1'));
@@ -930,7 +943,7 @@ function shutdown() { J.stopping = true; setTimeout(function () { process.exit(0
 // and is run; and every 15 s the queue is looked at again (how a job whose machine died, and whose lease ran out, is taken up).
 function boot() { return ready.then(function () { return requeue(); }).then(function () { J.on = true; setInterval(function () { pump().catch(function (e) { console.error('jobs:', e.message); }); }, 15000).unref(); return pump(); }); }
 
-module.exports = { boot: boot, shutdown: shutdown, handle: handle, db: db, ready: ready, check: check, buildOf: buildOf, rebuild: rebuild, build: function () { return BUILD; }, ROUTES: ROUTES, CLIENT: PAGES.concat(SCRIPTS), ST: ST, Admin: Admin, mail: mail, seam: seam, jobs: { drain: drain, requeue: requeue, pump: pump, claim: claim, beat: beat, run: runJob, state: J }, renderKey: renderKey, loadSettings: loadSettings, occasions: occasions, slugProblem: slugProblem, slugify: slugify, balance: balance, grant: grant, settle: settle, docOf: docOf, engineCard: engineCard, publicCard: publicCard, DOC_V: DOC_V };
+module.exports = { boot: boot, shutdown: shutdown, handle: handle, db: db, ready: ready, check: check, buildOf: buildOf, rebuild: rebuild, build: function () { return BUILD; }, ROUTES: ROUTES, CLIENT: PAGES.concat(SCRIPTS), ST: ST, Admin: Admin, Connect: Connect, mail: mail, seam: seam, jobs: { drain: drain, requeue: requeue, pump: pump, claim: claim, beat: beat, run: runJob, state: J }, renderKey: renderKey, loadSettings: loadSettings, occasions: occasions, slugProblem: slugProblem, slugify: slugify, balance: balance, grant: grant, settle: settle, docOf: docOf, engineCard: engineCard, publicCard: publicCard, DOC_V: DOC_V };
 if (require.main === module && process.argv.indexOf('--check') >= 0) check().then(function (r) { console.log(r.lines.join('\n')); process.exit(r.ok ? 0 : 1); }, function (e) { console.error('CHECK FAILED: ' + e.message); process.exit(1); });
 else if (require.main === module) http.createServer(handle).listen(+env.PORT || 8080, function () {
   boot().catch(function (e) { console.error('the database is not ready: ' + e.message); process.exit(1); });

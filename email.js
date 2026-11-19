@@ -22,7 +22,7 @@ module.exports = function (d) {   // d = { db, ready, tooMany, json, body, page,
     if (!s || s.length > 400 || s[0] !== '/' || /^\/[\/\\]/.test(s) || /[\u0000- \\]/.test(s)) return '/make';
     let u; try { u = new URL(s, SITE); } catch (e) { return '/make'; }
     const p = u.pathname;
-    if (u.origin !== new URL(SITE).origin || !(p === '/' || p === '/make' || p === '/admin')) return '/make';
+    if (u.origin !== new URL(SITE).origin || !(p === '/' || p === '/make' || p === '/admin' || p === '/oauth/authorize')) return '/make';   // (/oauth/authorize: signing in to the connector, oauth.js)
     return p + u.search;
   }
   async function post(msg) {

@@ -24,6 +24,7 @@ A Glyphh game. Built locally; deployed only by `./deploy.sh`, by its owner.
 | `render.js` | the server's renderer: `@napi-rs/canvas` frames piped to `ffmpeg` |
 | `email.js` | the sign-in link, "a carol for you" and "your carol is ready" emails (Resend), and "don't email me again" |
 | `admin.js`, `admin.html`, `admin-ui.js` | the admin: tools used by the /admin page and by `/mcp?admin=<key>` |
+| `connect.js`, `oauth.js`, `connect-rules.js`, `connect-ui.js`, `mcp-app.js` | THE CONNECTOR for a person's own Claude at `/mcp` (see "The connector"): its tools, its sign-in (OAuth 2.1), the rules held in words Claude writes, its pages (the panel in the chat, the preview link, the upload page), and the MCP Apps bridge the panel carries (`@modelcontextprotocol/ext-apps`, bundled) |
 | `brand.js` | the lockup: the mark as SVG, and the icons, default share image and email header drawn from it |
 | `landing.html`, `landing.js`, `app.html`, `app.js`, `card.html`, `card.js`, `style.css`, `net.js` | the pages: landing, the maker's flow, the recipient's card; `net.js` is the outbox and the safe reload |
 | `legal/` | terms, privacy, refunds, acceptable use, photos: careful drafts under a "Draft: under legal review" banner |
@@ -206,6 +207,110 @@ answer 404. The maker's email is never in a card's page or data. Recipients' add
 (`sends`, `suppress`). The agent is sent the maker's text, never photos. The music service is sent the lyrics and
 style words, never photos or addresses.
 
+## The connector
+
+A person adds `https://sendacarol.com/mcp` to their own Claude (Settings, Connectors, Add custom connector; or
+`claude mcp add --transport http send-a-carol https://sendacarol.com/mcp`), signs in, and makes a carol by talking.
+The landing page says how ("Make it with Claude", `/#claude`); the maker's menu has "Use Claude".
+
+**One door.** A tool does what the site's pages do by asking the site's own API in this process, as that person
+(`connect.js` `ask()`): the same checks, limits per account per day, credits, emails and "don't email me again"
+list, whichever door somebody comes through. The connector has no path of its own that spends, sends or deletes.
+The two things the pages cannot do (lines written by the person's own Claude; a music direction set by hand) are
+checked in `connect-rules.js` and saved with the server's own `saveDoc`.
+
+**Signing in** (`oauth.js`). `/mcp` answers 401 with `WWW-Authenticate: Bearer resource_metadata=...`; the client
+reads `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`, registers itself
+(`/oauth/register`: redirects must be https, or http on localhost), and sends the person to `/oauth/authorize`.
+That page signs them in with the product's own accounts (Google's button, or the emailed link, which brings them
+back to the same request wherever they open it: the request is put aside in `oauth_asks` for 30 minutes) and asks
+them to allow it; the yes carries a mark only this server could make for that person and that request. The code
+(5 minutes, once) is traded at `/oauth/token` with PKCE (S256); access tokens last 30 days; a refresh token works
+once and is replaced. Only hashes of codes and tokens are kept. A closed account is shut out.
+
+**The protocol.** Stateless JSON-RPC over POST: the 2026-07-28 revision (`server/discover`; lists and
+`resources/read` carry `ttlMs` and `cacheScope`, which claude.ai needs to show a panel) and the earlier ones
+(`initialize`); `tools/list`, `tools/call`, `ping`, notifications (202), batches of up to 20 (run in order).
+
+**The tools** (32; every list is searched and paged, and no tool answers a whole list):
+
+| Tool | What it does |
+| --- | --- |
+| `how_it_works` | the guide: what a carol is, the steps, what is free, what costs a credit, what needs a yes, the limits, never |
+| `occasions` | the occasions that can be made today, the ones coming soon, how many looks each has |
+| `find_templates` | search the looks by words, occasion, style, tone and audience; 8 to a page, at most 20 |
+| `suggest_templates` | three looks from who it is for, the occasion and the mood, each with why |
+| `template` | one look in full, with a link that plays it and a picture drawn by the engine |
+| `start_carol` | a draft (who it is for and from, what they are to each other, true details); picks a look when none is given |
+| `my_carols` | the person's carols: search, state, 12 to a page |
+| `carol` | everything about one: words, music direction, photos, takes, where it is, links |
+| `set_details` | change who it is for or from, the details, the line that must be in the song |
+| `write_lyrics` | the product's own writer writes or rewrites it: the site's free-draft, rewrite and daily limits |
+| `set_lyrics` | lines the person's own Claude wrote: the writer's shape, a fit-to-seconds check, the same refusals |
+| `set_text` | title, greeting, sign-off, captions |
+| `add_photos` | a link, good for 30 minutes and one carol, to the product's upload page |
+| `arrange_photos` | order, caption, "one person" (the shaped frame), position in the frame |
+| `remove_photo` | take one photo out |
+| `change_template` | another look |
+| `set_music` | style words, tempo, voices, notes; never an artist, a song or "in the style of" |
+| `preview_carol` | the live card: an MCP App panel in the chat; elsewhere a link that plays it, and the poster |
+| `make_song` | has the song made and the video rendered: **one credit**, `confirm: true` |
+| `status` | queued, writing the song, rendering N%, ready, failed |
+| `takes` | the takes, which one plays, links to listen |
+| `another_take` | the song sung again, within the takes a carol has |
+| `choose_take` | which take the card plays (the video is made again) |
+| `update_video` | the video made again after edits made it stale |
+| `share_links` | the card page, the mp4s, the poster (the card's name stays from then on) |
+| `set_card_name` | the `/<card-name>` address, by the site's rules, until first shared |
+| `send_by_email` | emails the carol to named people, with a note: `confirm: true` |
+| `take_down` | the page answers "not here": `confirm: true` |
+| `put_back` | up again at the same link |
+| `delete_carol` | for good: `confirm: true` |
+| `my_account` | name, credits, what is left today of each limit |
+| `buy_link` | the site's own link to the packs; the connector never takes payment and never gives credits |
+
+**What is held in code, not only in descriptions.**
+
+- *Ownership.* A token stands for one account; every tool reads the carol as that person through the site's own
+  `mine()`: another account's carol is "There is no such carol". The admin's tools are not in this list and stay at
+  `/mcp?admin=<key>` (a player's token does not open that door).
+- *The confirm rule.* `make_song`, `send_by_email`, `take_down` and `delete_carol` do nothing without
+  `confirm: true` (the boolean, nothing else): they answer what would happen ("This uses 1 of your 3 credits. The
+  song takes about a minute...") so Claude asks the person first. With no credits `make_song` answers the buy link.
+- *Once.* A write that carries `idempotency_key` is done once per person, tool, carol and key: a repeat gets the
+  first answer (`replayed: true`); two at once wait on one piece of work (`idem` table, a day).
+  `start_carol`, `another_take`, and `make_song` and `send_by_email` with `confirm: true`, require one.
+- *Limits.* Drafts, rewrites, the writer's calls a day, new carols a day, emails a carol and a day, videos a day,
+  photos: the site's own counters. The connector itself: 120 requests a minute for a token (the admin's limit
+  `connectorPerMinute`), 200 kB a request.
+- *Words Claude wrote* (`connect-rules.js`): `set_lyrics` holds lines to the writer's shape (4 to 10 lines, 64
+  characters, verse and hook), plans the song as `song.js` will and refuses a line with more syllables than its
+  seconds can carry, and refuses, each in one sentence that says what to change: words that demean a person, sexual
+  content, a child beside what is not for children, hate, a line or "the tune of" an existing song, an artist's
+  name. `set_music` (and `make_song`, before a credit is spent) refuses a music direction that names an artist, a
+  band, a composer or a song, or says "in the style of" or "sounds like". This is a screen of words and patterns: it
+  is narrower than a writer's judgement, and the tool descriptions tell Claude the rules in full.
+- *Photos.* The connector takes no files. `add_photos` gives a signed link (HMAC of kind, carol and expiry) to
+  `/mcp/photos/<link>`: the product's own page (camera or library, HEIC, the "These are photos I may use" tick). A
+  photo without the tick's header is refused, and no tool adds a photo.
+- *Nothing leaks.* No answer holds a storage key, an account id, another person's address, or a recipient's
+  address (hashes only, as on the site); photos and songs are shown through links that run out in two hours.
+
+**Seeing it.** `preview_carol` points at a `ui://send-a-carol/preview/<build>` resource: one self-contained page
+(`connect-ui.js`: `art.js`, `engine.js`, `fonts.js` and the bridge inlined; no storage) that draws the card with the
+product's own engine, silently on the template's tempo before there is a song and with the song (behind a button)
+after, and asks for the carol again every five seconds through the connector's own tool, so it follows the chat.
+The answer carries the carol's one template, so the panel holds no template list however large the library is.
+Where a client shows no panel the answer has `preview_url` (the same player as a page of the site, two hours) and,
+once ready, the poster.
+
+**Testing it.** `node test/connect.cjs` (in `npm test`): the whole sign-in flow, the protocol, every tool's happy
+path and refusals, ownership, the confirm gates, the shared limits, the upload link, a library stubbed to 5,000
+templates, and, in headless Chromium, the upload page and the panel in a sandboxed frame with no storage fed by a
+stand-in host. `node tools/connect-proof.cjs` is one run as a client makes it, start to finish, with the model and
+the music service as stand-ins and the video rendered for real at full size. **Not tested:** inside claude.ai and
+the Claude apps (the panel there, the sign-in from there), and a real person's flow.
+
 ## Safe builds
 
 - **Build id**: a hash of every client file. `X-Build` on every answer; pages carry `window.SAC_BUILD`; scripts and
@@ -307,7 +412,6 @@ network) the check, ffmpeg, the fonts, a short render and a HEIC conversion.
 
 ## Next (not in version 1)
 
-- A connector for makers (make a carol from Claude). Only the admin's tools are on `/mcp` today.
 - The occasions marked `soon`, and Hanukkah, Diwali, Eid, Easter, Halloween, Thanksgiving.
 - Word-by-word karaoke, if the music service documents its timestamps.
 - A player card for X (it needs their approval), an account page with "delete my account".
