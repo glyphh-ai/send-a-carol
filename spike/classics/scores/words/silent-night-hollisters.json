@@ -1,0 +1,15 @@
+{
+  "base": "silent-night",
+  "title": "Sleep Now, June (to the tune of Silent Night)",
+  "how": "New words of our own under the old notes: one syllable per sung note (a _ note carries the syllable before it), line for line (score.cjs counts them). A made-up family.",
+  "lines": [
+    { "text": "Sleep now, June", "syl": "Sleep now June" },
+    { "text": "little one", "syl": "lit- tle one" },
+    { "text": "Snow is soft", "syl": "Snow is soft" },
+    { "text": "stars are bright", "syl": "stars are bright" },
+    { "text": "Hollisters gathered by firelight", "syl": "Hol- lis- ters gath- ered by fire- light" },
+    { "text": "Little sister, so cozy and warm", "syl": "Lit- tle sis- ter so co- zy and warm" },
+    { "text": "Sleep in Grandmother's arms", "syl": "Sleep in Grand- mo- ther's arms" },
+    { "text": "love from the Hollisters", "syl": "love from the Hol- lis- ters" }
+  ]
+}

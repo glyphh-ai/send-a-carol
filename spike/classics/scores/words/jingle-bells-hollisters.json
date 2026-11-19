@@ -1,0 +1,23 @@
+{
+  "base": "jingle-bells",
+  "title": "Grandma Dot (to the tune of Jingle Bells)",
+  "how": "New words of our own under the old notes: one syllable per sung note, line for line (score.cjs counts them). A made-up family.",
+  "lines": [
+    { "text": "Packing up the car", "syl": "Pack- ing up the car" },
+    { "text": "for the drive to Grandma Dot's", "syl": "for the drive to Grand- ma Dot's" },
+    { "text": "Milo lost a tooth", "syl": "Mi- lo lost a tooth" },
+    { "text": "somewhere on the way", "syl": "some- where on the way" },
+    { "text": "Waffles ate the pie", "syl": "Waf- fles ate the pie" },
+    { "text": "and he won't say why", "syl": "and he won't say why" },
+    { "text": "so here we come all singing loud", "syl": "so here we come all sing- ing loud" },
+    { "text": "the Hollisters are here", "syl": "the Hol- lis- ters are here" },
+    { "text": "Grandma Dot, Grandma Dot", "syl": "Grand- ma Dot Grand- ma Dot" },
+    { "text": "we are on our way", "syl": "we are on our way" },
+    { "text": "Put the kettle on for us", "syl": "Put the ket- tle on for us" },
+    { "text": "we'll be there by Christmas Day, hey!", "syl": "we'll be there by Christ- mas Day hey" },
+    { "text": "Grandma Dot, Grandma Dot", "syl": "Grand- ma Dot Grand- ma Dot" },
+    { "text": "love from all of us", "syl": "love from all of us" },
+    { "text": "Merry Christmas, Grandma Dot", "syl": "Mer- ry Christ- mas Grand- ma Dot" },
+    { "text": "from the Hollisters with love", "syl": "from the Hol- lis- ters with love" }
+  ]
+}

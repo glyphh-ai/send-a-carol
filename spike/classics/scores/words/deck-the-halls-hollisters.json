@@ -1,0 +1,15 @@
+{
+  "base": "deck-the-halls",
+  "title": "Coming Over (to the tune of Deck the Halls)",
+  "how": "New words of our own under the old notes: one syllable per sung note, line for line (score.cjs counts them). A made-up family.",
+  "lines": [
+    { "text": "Grandma Dot, we're coming over", "syl": "Grand- ma Dot we're com- ing o- ver" },
+    { "text": "Fa la la la la, la la la la", "syl": "Fa la la la la la la la la" },
+    { "text": "All the Hollisters are hungry", "syl": "All the Hol- lis- ters are hun- gry" },
+    { "text": "Fa la la la la, la la la la", "syl": "Fa la la la la la la la la" },
+    { "text": "Milo wore his reindeer sweater", "syl": "Mi- lo wore his rein- deer sweat- er" },
+    { "text": "Fa la la, la la la, la la la", "syl": "Fa la la la la la la la la" },
+    { "text": "Merry Christmas, Grandma, love you", "syl": "Mer- ry Christ- mas Grand- ma love you" },
+    { "text": "Fa la la la la, la la la la", "syl": "Fa la la la la la la la la" }
+  ]
+}

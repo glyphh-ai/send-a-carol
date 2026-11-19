@@ -1,0 +1,20 @@
+{
+  "id": "deck-the-halls",
+  "title": "Deck the Halls",
+  "credit": "Tune: \"Nos Galan\", Welsh traditional (printed 1794); English words: Thomas Oliphant, 1862, in the form printed in the Pennsylvania School Journal, December 1877 (\"Deck the hall\", \"Don we now our gay apparel\", \"Christmas carol\").",
+  "how": "note/length/syllable; lengths in beats (a beat is a quarter note); | is a bar line; r is a rest; a syllable ending in - continues the word; _ carries the syllable before it onto another note. Written in B flat; the arrangement and the key are ours.",
+  "meter": [4, 4],
+  "bpm": 126,
+  "introBars": 2,
+  "chords": "Bb | Bb | F7 Bb | Bb F7 Bb Bb | Bb | Bb | F7 Bb | Bb F7 Bb Bb | F7 | Bb | Bb C7 | F C7 F F7 | Bb | Bb | Eb Bb | Bb F7 Bb Bb",
+  "lines": [
+    { "section": "verse", "text": "Deck the hall with boughs of holly", "notes": "F4/1.5/Deck Eb4/.5/the D4/1/hall C4/1/with | Bb3/1/boughs C4/1/of D4/1/hol- Bb3/1/ly |" },
+    { "section": "chorus", "text": "Fa la la la la, la la la la", "notes": "C4/.5/Fa D4/.5/la Eb4/.5/la C4/.5/la D4/1.5/la C4/.5/la | Bb3/1/la A3/1/la Bb3/2/la |" },
+    { "section": "verse", "text": "'Tis the season to be jolly", "notes": "F4/1.5/'Tis Eb4/.5/the D4/1/sea- C4/1/son | Bb3/1/to C4/1/be D4/1/jol- Bb3/1/ly |" },
+    { "section": "chorus", "text": "Fa la la la la, la la la la", "notes": "C4/.5/Fa D4/.5/la Eb4/.5/la C4/.5/la D4/1.5/la C4/.5/la | Bb3/1/la A3/1/la Bb3/2/la |" },
+    { "section": "verse", "text": "Don we now our gay apparel", "notes": "C4/1.5/Don D4/.5/we Eb4/1/now C4/1/our | D4/1.5/gay Eb4/.5/ap- F4/1/par- C4/1/el |" },
+    { "section": "chorus", "text": "Fa la la, la la la, la la la", "notes": "D4/.5/Fa E4/.5/la F4/1/la G4/.5/la A4/.5/la Bb4/1/la | A4/1/la G4/1/la F4/2/la |" },
+    { "section": "verse", "text": "Troll the ancient Christmas carol", "notes": "F4/1.5/Troll Eb4/.5/the D4/1/an- C4/1/cient | Bb3/1/Christ- C4/1/mas D4/1/car- Bb3/1/ol |" },
+    { "section": "chorus", "text": "Fa la la la la, la la la la", "notes": "G4/.5/Fa G4/.5/la G4/.5/la G4/.5/la F4/1.5/la Eb4/.5/la | D4/1/la C4/1/la Bb3/2/la |" }
+  ]
+}

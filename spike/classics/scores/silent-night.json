@@ -1,0 +1,20 @@
+{
+  "id": "silent-night",
+  "title": "Silent Night",
+  "credit": "Music: Franz Xaver Gruber, 1818 (first edition 1833); German words: Joseph Mohr, 1816; English words: John Freeman Young, 1859.",
+  "how": "note/length/syllable; lengths in beats (a beat is an eighth note, six to the bar); | is a bar line; r is a rest; a syllable ending in - continues the word; _ carries the syllable before it onto another note. The tune as sung today, written in G; the arrangement and the key are ours.",
+  "meter": [6, 8],
+  "bpm": 132,
+  "introBars": 1,
+  "chords": "G | G | D7 | G | C | G | C | G | D7 | G | G D7 | G",
+  "lines": [
+    { "section": "verse", "text": "Silent night", "notes": "D4/1.5/Si- E4/.5/_ D4/1/lent B3/3/night |" },
+    { "section": "verse", "text": "holy night", "notes": "D4/1.5/ho- E4/.5/_ D4/1/ly B3/3/night |" },
+    { "section": "verse", "text": "All is calm", "notes": "A4/2/All A4/1/is F#4/3/calm |" },
+    { "section": "verse", "text": "all is bright", "notes": "G4/2/all G4/1/is D4/3/bright |" },
+    { "section": "verse", "text": "Round yon virgin mother and child", "notes": "E4/2/Round E4/1/yon G4/1.5/vir- F#4/.5/_ E4/1/gin | D4/1.5/mo- E4/.5/ther D4/1/and B3/3/child |" },
+    { "section": "verse", "text": "Holy infant so tender and mild", "notes": "E4/2/Ho- E4/1/ly G4/1.5/in- F#4/.5/fant E4/1/so | D4/1.5/ten- E4/.5/der D4/1/and B3/3/mild |" },
+    { "section": "chorus", "text": "Sleep in heavenly peace", "notes": "A4/2/Sleep A4/1/in C5/1.5/hea- A4/.5/ven- F#4/1/ly | G4/3/peace B4/2/_ r/1 |" },
+    { "section": "chorus", "text": "sleep in heavenly peace", "notes": "G4/1.5/sleep D4/.5/_ B3/1/in D4/1.5/hea- C4/.5/ven- A3/1/ly | G3/5/peace r/1 |" }
+  ]
+}

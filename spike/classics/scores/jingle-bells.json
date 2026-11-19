@@ -1,0 +1,28 @@
+{
+  "id": "jingle-bells",
+  "title": "Jingle Bells",
+  "credit": "Words and music: James Lord Pierpont, published 1857 (Oliver Ditson & Co., Boston) as \"The One Horse Open Sleigh\"; the familiar refrain tune is on record by 1898.",
+  "how": "note/length/syllable; lengths in beats (a beat is a quarter note); | is a bar line; r is a rest; a syllable ending in - continues the word; _ carries the syllable before it onto another note. Written in D (the first editions are in A flat and G); the arrangement and the key are ours.",
+  "meter": [4, 4],
+  "bpm": 180,
+  "introBars": 2,
+  "chords": "D | D | D | G | G | A7 | A7 | D | D | D | D | G | G | D | A7 | D | D | D | D | D | G | D | E7 | A7 | D | D | D | D | G | D | A7 | D",
+  "lines": [
+    { "section": "verse", "text": "Dashing through the snow", "notes": "A3/1/Dash- F#4/1/ing E4/1/through D4/1/the | A3/3/snow" },
+    { "section": "verse", "text": "in a one horse open sleigh", "notes": "A3/.5/in A3/.5/a | A3/1/one F#4/1/horse E4/1/o- D4/1/pen | B3/3/sleigh r/1 |" },
+    { "section": "verse", "text": "o'er the fields we go", "notes": "B3/1/o'er G4/1/the F#4/1/fields E4/1/we | C#4/3/go r/1 |" },
+    { "section": "verse", "text": "laughing all the way", "notes": "A4/1/laugh- A4/1/ing G4/1/all E4/1/the | F#4/3/way r/1 |" },
+    { "section": "verse", "text": "Bells on bobtails ring", "notes": "A3/1/Bells F#4/1/on E4/1/bob- D4/1/tails | A3/3/ring r/1 |" },
+    { "section": "verse", "text": "making spirits bright", "notes": "A3/1/mak- F#4/1/ing E4/1/spir- D4/1/its | B3/3/bright" },
+    { "section": "verse", "text": "what fun it is to ride and sing", "notes": "B3/1/what | B3/1/fun G4/1/it F#4/1/is E4/1/to | A4/1/ride A4/1/and A4/1/sing" },
+    { "section": "verse", "text": "a sleighing song tonight", "notes": "A4/1/a | B4/1/sleigh- A4/1/ing G4/1/song E4/1/to- | D4/3/night r/1 |" },
+    { "section": "chorus", "text": "Jingle bells, jingle bells", "notes": "F#4/1/Jin- F#4/1/gle F#4/2/bells | F#4/1/jin- F#4/1/gle F#4/2/bells |" },
+    { "section": "chorus", "text": "jingle all the way", "notes": "F#4/1/jin- A4/1/gle D4/1.5/all E4/.5/the | F#4/3/way r/1 |" },
+    { "section": "chorus", "text": "Oh what fun it is to ride", "notes": "G4/1/Oh G4/1/what G4/1.5/fun G4/.5/it | G4/1/is F#4/1/to F#4/1/ride" },
+    { "section": "chorus", "text": "in a one horse open sleigh, hey!", "notes": "F#4/.5/in F#4/.5/a | F#4/1/one E4/1/horse E4/1/o- F#4/1/pen | E4/2/sleigh A4/2/hey |" },
+    { "section": "chorus", "text": "Jingle bells, jingle bells", "notes": "F#4/1/Jin- F#4/1/gle F#4/2/bells | F#4/1/jin- F#4/1/gle F#4/2/bells |" },
+    { "section": "chorus", "text": "jingle all the way", "notes": "F#4/1/jin- A4/1/gle D4/1.5/all E4/.5/the | F#4/3/way r/1 |" },
+    { "section": "chorus", "text": "Oh what fun it is to ride", "notes": "G4/1/Oh G4/1/what G4/1.5/fun G4/.5/it | G4/1/is F#4/1/to F#4/1/ride" },
+    { "section": "chorus", "text": "in a one horse open sleigh", "notes": "F#4/.5/in F#4/.5/a | A4/1/one A4/1/horse G4/1/o- E4/1/pen | D4/3/sleigh r/1 |" }
+  ]
+}
