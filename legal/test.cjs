@@ -152,20 +152,20 @@ ok('the exact sentences are in the refund policy and in the terms', function () 
 });
 ok('the prices on the refund policy and the terms are the config\'s, each followed by the final-sale sentence', function () {
   const packs = L.CFG.packs, row = function (p) { return '<th scope="row">' + L.esc(p.label) + '</th><td data-h="Price">' + L.money(p.cents) + '</td><td data-h="The rule">One-time purchase. Not refundable.</td>'; };
-  assert.deepStrictEqual(packs.map(function (p) { return [p.credits, L.money(p.cents)]; }), [[1, '$4.99'], [5, '$14.99'], [10, '$24.99']]);
+  assert.deepStrictEqual(packs.map(function (p) { return [p.credits, L.money(p.cents)]; }), [[1, '$2.99'], [5, '$9.99'], [10, '$17.99']]);
   ['refunds', 'terms'].forEach(function (s) {
     const h = L.page(s);
     packs.forEach(function (p) { assert.ok(h.indexOf(row(p)) > 0, s + ': the pack ' + p.label + ' at ' + L.money(p.cents) + ', with the sentence after its price'); });
-    ['$4.99', '$14.99', '$24.99'].forEach(function (t) { assert.ok(h.indexOf(t) > 0, s + ': ' + t); });
+    ['$2.99', '$9.99', '$17.99'].forEach(function (t) { assert.ok(h.indexOf(t) > 0, s + ': ' + t); });
     assert.ok(raw(s).indexOf('{{packs}}') > 0, s + ': the table is the token, not typed');
   });
   assert.ok(docs.refunds.ids.indexOf('pricing') >= 0, 'the refund policy has a pricing section');
   // a price changed in the config is the price on the page (and nothing else on the page changes it back)
   const p0 = packs[0], was = p0.cents; p0.cents = 599;
   try {
-    ['refunds', 'terms'].forEach(function (s) { const h = L.page(s); assert.ok(h.indexOf('<td data-h="Price">$5.99</td>') > 0 && h.indexOf('$4.99') < 0, s + ': the page follows the config'); });
+    ['refunds', 'terms'].forEach(function (s) { const h = L.page(s); assert.ok(h.indexOf('<td data-h="Price">$5.99</td>') > 0 && h.indexOf('$2.99') < 0, s + ': the page follows the config'); });
   } finally { p0.cents = was; }
-  assert.ok(L.page('refunds').indexOf('<td data-h="Price">$4.99</td>') > 0, 'and back');
+  assert.ok(L.page('refunds').indexOf('<td data-h="Price">$2.99</td>') > 0, 'and back');
   // every amount of money on any page is a pack's price
   const prices = packs.map(function (p) { return L.money(p.cents); });
   everyHtml().forEach(function (p) { (p[1].replace(/<style>[\s\S]*?<\/style>/, '').match(/\$\d+(?:\.\d+)?/g) || []).forEach(function (t) { assert.ok(prices.indexOf(t) >= 0, p[0] + ': an amount that is no pack\'s price: ' + t); }); });

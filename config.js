@@ -21,9 +21,9 @@ const config = {
   // ----- money: one-off packs of carol credits, in US cents. A null price shows "coming soon" and cannot be bought. -----
   currency: 'usd',
   packs: [
-    { id: 'one', credits: 1, cents: 499, label: '1 carol' },
-    { id: 'five', credits: 5, cents: 1499, label: '5 carols' },
-    { id: 'ten', credits: 10, cents: 2499, label: '10 carols' },
+    { id: 'one', credits: 1, cents: 299, label: '1 carol' },
+    { id: 'five', credits: 5, cents: 999, label: '5 carols' },
+    { id: 'ten', credits: 10, cents: 1799, label: '10 carols' },
   ],
   finalSale: 'One-time purchase. Not refundable.',
 

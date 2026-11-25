@@ -31,7 +31,7 @@ const SLUGS = ['terms', 'privacy', 'refunds', 'acceptable-use', 'photos'];
 
 // ---- the product's name and address: the repo's config module, or these when it is not there yet ----
 const CFG = { name: 'Send a Carol', domain: 'sendacarol.com', site: 'https://sendacarol.com', support: 'support@glyphh.ai', company: 'Glyphh AI LLC',
-  packs: [{ id: 'one', credits: 1, cents: 499, label: '1 carol' }, { id: 'five', credits: 5, cents: 1499, label: '5 carols' }, { id: 'ten', credits: 10, cents: 2499, label: '10 carols' }],
+  packs: [{ id: 'one', credits: 1, cents: 299, label: '1 carol' }, { id: 'five', credits: 5, cents: 999, label: '5 carols' }, { id: 'ten', credits: 10, cents: 1799, label: '10 carols' }],
   finalSale: 'One-time purchase. Not refundable.', limits: { takesPerCarol: 3, photosPerCarol: 8, photoBytes: 25 * 1024 * 1024, freeDrafts: 3 },
   brand: { ink: '#2a1a2e', berry: '#c2185b', coral: '#ff6b5e', gold: '#f2b632', cream: '#fff8ee', night: '#1d1230' } };
 const LIMITS = CFG.limits;                                   // (the defaults, for a limit the config does not give)

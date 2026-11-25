@@ -24,7 +24,7 @@ const T0 = Date.now();
   await section('1. Buying a pack', async function () {
     const who = await T.user('google:1', 'buyer@example.test'), FINAL = 'One-time purchase. Not refundable.';
     F.stripe.payment = 'unpaid';   // (nobody pays in this section)
-    eq(CFG.finalSale, FINAL, 'config.finalSale'); eq(CFG.app, 'send-a-carol'); eq(CFG.currency, 'usd'); eq(JSON.stringify(CFG.packs.map(function (p) { return [p.id, p.credits, p.cents]; })), '[["one",1,499],["five",5,1499],["ten",10,2499]]', 'the packs and their prices');
+    eq(CFG.finalSale, FINAL, 'config.finalSale'); eq(CFG.app, 'send-a-carol'); eq(CFG.currency, 'usd'); eq(JSON.stringify(CFG.packs.map(function (p) { return [p.id, p.credits, p.cents]; })), '[["one",1,299],["five",5,999],["ten",10,1799]]', 'the packs and their prices');
     eq((await POST('/api/buy', { pack: 'one' })).status, 401, 'buying needs an account'); eq(F.stripe.asked.length, 0);
     for (const pack of CFG.packs) {
       const n = F.stripe.asked.length, r = await POST('/api/buy', { pack: pack.id, card: 'cABCDEF123' }, who, { 'idempotency-key': key() }), q = F.stripe.asked[n], what = pack.id + ': ';
@@ -38,10 +38,10 @@ const T0 = Date.now();
       ok(!('customer' in q) && !('payment_intent_data[setup_future_usage]' in q) && !('payment_method_collection' in q), what + 'no card kept for later');
       const row = await db.get('SELECT * FROM checkouts WHERE session = ?', [sessionOf(r.json.url).id]); eq(row.state, 'open'); eq(row.uid, 'google:1'); eq(row.cents, pack.cents); eq(row.credits, pack.credits);
     }
-    eq(F.stripe.asked[F.stripe.asked.length - 1]['line_items[0][price_data][unit_amount]'], '2499'); eq((await buy(who, 'one')).metadata.app, 'send-a-carol'); eq(F.stripe.asked[F.stripe.asked.length - 1].success_url, SITE + '/make?paid={CHECKOUT_SESSION_ID}', 'with no card: just /make');
+    eq(F.stripe.asked[F.stripe.asked.length - 1]['line_items[0][price_data][unit_amount]'], '1799'); eq((await buy(who, 'one')).metadata.app, 'send-a-carol'); eq(F.stripe.asked[F.stripe.asked.length - 1].success_url, SITE + '/make?paid={CHECKOUT_SESSION_ID}', 'with no card: just /make');
     // refused
     const n = F.stripe.asked.length; let r = await POST('/api/buy', { pack: 'hundred' }, who); eq(r.status, 400, 'an unknown pack is refused'); ok(/no such pack/.test(r.json.error)); eq((await POST('/api/buy', {}, who)).status, 400); eq((await POST('/api/buy', { pack: 'one', cents: 1, amount: 1, credits: 99 }, who, { 'idempotency-key': key() })).status, 200, 'what a page sends beside the pack is ignored');
-    eq(F.stripe.asked[n]['line_items[0][price_data][unit_amount]'], '499', 'the price is the config\'s, never the page\'s'); eq(F.stripe.asked[n]['metadata[credits]'], '1'); eq(F.stripe.asked.length, n + 1);
+    eq(F.stripe.asked[n]['line_items[0][price_data][unit_amount]'], '299', 'the price is the config\'s, never the page\'s'); eq(F.stripe.asked[n]['metadata[credits]'], '1'); eq(F.stripe.asked.length, n + 1);
     // coming soon
     const was = CFG.packs[0].cents; CFG.packs[0].cents = null;
     try { r = await POST('/api/buy', { pack: 'one' }, who, { 'idempotency-key': key() }); eq(r.status, 409, 'a pack with no price cannot be bought'); ok(/coming soon/.test(r.json.error)); eq(F.stripe.asked.length, n + 1, 'Stripe is not asked');
@@ -63,10 +63,10 @@ const T0 = Date.now();
     const s = await buy(who, 'five'); let r = await confirm(s.id); eq(r.status, 200); eq(r.json.ok, true, 'a paid session is confirmed'); eq(r.json.credits, 5, 'and grants the pack\'s credits');
     r = await confirm(s.id); eq(r.json.ok, true); eq(r.json.credits, 5, 'confirming twice grants once'); const many = await Promise.all([1, 2, 3, 4, 5, 6].map(function () { return confirm(s.id); })); ok(many.every(function (x) { return x.json.credits === 5; }), 'six at once: still once'); eq(await bal(), 5);
     eq(await count("SELECT COUNT(*) AS n FROM credit_log WHERE uid = 'google:2'"), 1, 'one line in credit_log'); const cl = await db.get("SELECT * FROM credit_log WHERE uid = 'google:2'"); eq(cl.delta, 5); eq(cl.ref, 'buy:' + s.id); eq(cl.why, 'bought five');
-    let p = await db.all("SELECT * FROM purchases WHERE uid = 'google:2'"); eq(p.length, 1, 'one purchase'); eq(p[0].session, s.id); eq(p[0].amount, 1499, 'the amount is recorded'); eq(p[0].currency, 'usd'); eq(p[0].live, 0, 'and that it was a test payment'); eq(p[0].pack, 'five'); eq(p[0].credits, 5);
+    let p = await db.all("SELECT * FROM purchases WHERE uid = 'google:2'"); eq(p.length, 1, 'one purchase'); eq(p[0].session, s.id); eq(p[0].amount, 999, 'the amount is recorded'); eq(p[0].currency, 'usd'); eq(p[0].live, 0, 'and that it was a test payment'); eq(p[0].pack, 'five'); eq(p[0].credits, 5);
     eq((await db.get('SELECT state FROM checkouts WHERE session = ?', [s.id])).state, 'paid'); let me = (await GET('/api/me', who)).json.user; eq(me.credits, 5); eq(me.paid, true, 'the account has paid'); eq(await count("SELECT COUNT(*) AS n FROM events WHERE kind = 'bought' AND uid = 'google:2'"), 1);
     // a live payment is recorded as live
-    const live = await buy(who, 'one'); live.livemode = true; eq((await confirm(live.id)).json.credits, 6); eq((await db.get('SELECT live, amount FROM purchases WHERE session = ?', [live.id])).live, 1, 'livemode is recorded'); eq((await db.get('SELECT amount FROM purchases WHERE session = ?', [live.id])).amount, 499);
+    const live = await buy(who, 'one'); live.livemode = true; eq((await confirm(live.id)).json.credits, 6); eq((await db.get('SELECT live, amount FROM purchases WHERE session = ?', [live.id])).live, 1, 'livemode is recorded'); eq((await db.get('SELECT amount FROM purchases WHERE session = ?', [live.id])).amount, 299);
     // not paid
     F.stripe.payment = 'unpaid'; const u = await buy(who, 'ten'); F.stripe.payment = 'paid'; r = await confirm(u.id); eq(r.json.ok, false, 'an unpaid session is not confirmed'); eq(r.json.credits, 6, 'and grants nothing'); eq(await count('SELECT COUNT(*) AS n FROM purchases WHERE session = ?', [u.id]), 0); eq((await db.get('SELECT state FROM checkouts WHERE session = ?', [u.id])).state, 'open');
     u.payment_status = 'paid'; eq((await confirm(u.id)).json.credits, 16, 'once it is paid, it is');
@@ -75,7 +75,7 @@ const T0 = Date.now();
     const foreign = await buy(who, 'ten'); foreign.metadata.app = 'another-glyphh-game'; r = await confirm(foreign.id); eq(r.json.ok, false, 'a session of another app grants nothing'); eq(r.json.credits, 16);
     const nometa = await buy(who, 'ten'); nometa.metadata = {}; eq((await confirm(nometa.id)).json.ok, false, 'nor one with no metadata'); const nopack = await buy(who, 'ten'); nopack.metadata.pack = 'hundred'; eq((await confirm(nopack.id)).json.ok, false, 'nor one for a pack that is not ours'); eq(await bal(), 16);
     eq((await confirm(mine.id)).json.credits, 26, '(its own buyer is granted it)'); eq(await count("SELECT COUNT(*) AS n FROM purchases WHERE uid = 'google:2'"), 4);
-    const sum = (await db.get("SELECT SUM(delta) AS n FROM credit_log WHERE uid = 'google:2'")).n; eq(sum, 26, 'the balance is the sum of credit_log'); eq((await db.get("SELECT SUM(amount) AS n FROM purchases WHERE uid = 'google:2'")).n, 1499 + 499 + 2499 + 2499, 'purchases add up to what was paid');
+    const sum = (await db.get("SELECT SUM(delta) AS n FROM credit_log WHERE uid = 'google:2'")).n; eq(sum, 26, 'the balance is the sum of credit_log'); eq((await db.get("SELECT SUM(amount) AS n FROM purchases WHERE uid = 'google:2'")).n, 999 + 299 + 1799 + 1799, 'purchases add up to what was paid');
     // Stripe is down when they come back: nothing granted, nothing lost
     const down = await buy(who, 'one'), f0 = S.seam.fetch; S.seam.fetch = async function () { throw new Error('socket hang up'); }; r = await confirm(down.id); S.seam.fetch = f0; eq(r.status, 200); eq(r.json.ok, false, 'Stripe not answering: not confirmed'); eq(r.json.credits, 26); eq((await confirm(down.id)).json.credits, 27, 'and confirmed when it answers');
   });
@@ -84,7 +84,7 @@ const T0 = Date.now();
     try {
       // paid, never confirmed: found at the next /api/me
       const a = await T.user('google:10', 'gone@example.test'), s = await buy(a, 'five'); eq(await S.balance('google:10'), 0, 'paid, and the buyer closed the tab: nothing yet');
-      let me = (await GET('/api/me', a)).json.user; eq(me.credits, 5, 'the next /api/me grants it'); eq(me.paid, true); eq((await db.get('SELECT state FROM checkouts WHERE session = ?', [s.id])).state, 'paid'); eq((await db.get('SELECT amount FROM purchases WHERE session = ?', [s.id])).amount, 1499);
+      let me = (await GET('/api/me', a)).json.user; eq(me.credits, 5, 'the next /api/me grants it'); eq(me.paid, true); eq((await db.get('SELECT state FROM checkouts WHERE session = ?', [s.id])).state, 'paid'); eq((await db.get('SELECT amount FROM purchases WHERE session = ?', [s.id])).amount, 999);
       for (const ms of [0, 61000, 200000]) { later(ms); eq((await GET('/api/me', a)).json.user.credits, 5, 'and only once (' + ms / 1000 + ' s later)'); } Date.now = realNow;
       eq((await GET('/api/buy/confirm?session_id=' + s.id, a)).json.credits, 5, 'coming back after all changes nothing'); eq(await count("SELECT COUNT(*) AS n FROM credit_log WHERE uid = 'google:10'"), 1); eq(await count("SELECT COUNT(*) AS n FROM purchases WHERE uid = 'google:10'"), 1);
       // unpaid stays open and is granted when it is paid; expired is marked

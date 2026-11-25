@@ -172,7 +172,7 @@ up; the legal drafts carry this as a limit on what a card may be used for, with 
 
 ### Money
 
-One-off packs of carol credits through Stripe Checkout (REST, no SDK): 1 for $4.99, 5 for $14.99, 10 for $24.99
+One-off packs of carol credits through Stripe Checkout (REST, no SDK): 1 for $2.99, 5 for $9.99, 10 for $17.99
 (`config.packs`, in cents; a pack whose price is `null` shows "coming soon" and cannot be bought). **All sales are
 final.** Every buy button's sheet and Stripe's own page say "One-time purchase. Not refundable." (`config.finalSale`).
 There is no code anywhere that gives money back. **There is no subscription** and nothing that renews.

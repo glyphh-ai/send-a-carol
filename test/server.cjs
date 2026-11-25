@@ -50,7 +50,7 @@ const T0 = Date.now();
     ['name', 'tagline', 'domain', 'site', 'noun', 'support', 'finalSale', 'currency', 'packs', 'limits', 'video', 'occasions', 'featured', 'payments', 'agent', 'music', 'email'].forEach(function (k) { ok(c[k] !== undefined, 'config.' + k + ' is there'); });
     eq(c.name, CFG.name); eq(c.noun, 'carol'); eq(c.support, 'support@glyphh.ai'); eq(c.finalSale, 'One-time purchase. Not refundable.'); eq(c.site, SITE); eq(c.currency, 'usd');
     eq(JSON.stringify(c.limits), JSON.stringify({ photos: 8, photoBytes: 25 * 1024 * 1024, takes: 3, rewrites: 10, freeDrafts: 3, recipients: 50, lines: 10, lineChars: 64, details: 1200 }), 'config.limits');
-    eq(JSON.stringify(c.video), '{"min":20,"max":40}', 'config.video'); eq(JSON.stringify(c.packs.map(function (p) { return [p.id, p.credits, p.cents, p.soon]; })), '[["one",1,499,false],["five",5,1499,false],["ten",10,2499,false]]', 'config.packs');
+    eq(JSON.stringify(c.video), '{"min":20,"max":40}', 'config.video'); eq(JSON.stringify(c.packs.map(function (p) { return [p.id, p.credits, p.cents, p.soon]; })), '[["one",1,299,false],["five",5,999,false],["ten",10,1799,false]]', 'config.packs');
     ok(c.payments === true && c.agent === true && c.music === true && c.email === true, 'what is set up'); ok(SECRETS.every(function (s) { return me.text.indexOf(s) < 0; }), 'no secret in /api/me');
 
     // Google

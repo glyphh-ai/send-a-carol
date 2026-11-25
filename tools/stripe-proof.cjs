@@ -121,13 +121,13 @@ async function pay(browser, url, tag, o) {
     ok(p1.returned === '/make?paid=' + sessions.five.id, 'Stripe sent the buyer back to ' + CFG.site + '/make?paid=' + sessions.five.id.slice(0, 16) + '...');
     const conf = p1.log.filter(function (l) { return /\/api\/buy\/confirm/.test(l); });
     ok(conf.length >= 1 && /200$/.test(conf[0]), 'the app\'s page, served by handle(), confirmed by itself: ' + conf.join(', '));
-    const s = (await stripe('GET', '/checkout/sessions/' + sessions.five.id)).json; ok(s.payment_status === 'paid' && s.status === 'complete' && s.amount_total === 1499, 'Stripe: ' + s.status + '/' + s.payment_status + ', amount_total ' + s.amount_total + ', payment_intent ' + String(s.payment_intent).slice(0, 12) + '...');
+    const s = (await stripe('GET', '/checkout/sessions/' + sessions.five.id)).json; ok(s.payment_status === 'paid' && s.status === 'complete' && s.amount_total === 999, 'Stripe: ' + s.status + '/' + s.payment_status + ', amount_total ' + s.amount_total + ', payment_intent ' + String(s.payment_intent).slice(0, 12) + '...');
     let g = await grants(A), u = await me(asA);
     ok(g.length === 1 && g[0].delta === 5 && g[0].ref === 'buy:' + sessions.five.id && u.credits === 5 && u.paid === true, 'credits granted ONCE: credit_log has ' + g.length + ' row (+' + (g[0] || {}).delta + ', "' + (g[0] || {}).why + '"), balance ' + u.credits + ', paid ' + u.paid);
     const again = [await call('GET', '/api/buy/confirm?session_id=' + sessions.five.id, null, asA), await call('GET', '/api/buy/confirm?session_id=' + sessions.five.id, null, asA)]; g = await grants(A);
     ok(again.every(function (r) { return r.status === 200 && r.json.ok === true && r.json.credits === 5; }) && g.length === 1 && (await me(asA)).credits === 5, 'the confirm asked twice more: ok, and still ' + g.length + ' grant, balance ' + (await me(asA)).credits);
     const pur = await S.db.all('SELECT * FROM purchases WHERE uid = ?', [A]), co = await S.db.get('SELECT state FROM checkouts WHERE session = ?', [sessions.five.id]);
-    ok(pur.length === 1 && pur[0].amount === 1499 && pur[0].currency === 'usd' && pur[0].live === 0 && pur[0].credits === 5 && co.state === 'paid', 'purchases: 1 row (1499 usd, live 0, 5 credits); its checkout is "paid"');
+    ok(pur.length === 1 && pur[0].amount === 999 && pur[0].currency === 'usd' && pur[0].live === 0 && pur[0].credits === 5 && co.state === 'paid', 'purchases: 1 row (999 usd, live 0, 5 credits); its checkout is "paid"');
     const wrong = await call('GET', '/api/buy/confirm?session_id=' + sessions.five.id, null, asB); ok(wrong.json.ok === false && wrong.json.credits === 0 && (await grants(B)).length === 0, 'another account confirming that session gets nothing');
     const unpaid = await call('GET', '/api/buy/confirm?session_id=' + sessions.one.id, null, asA); ok(unpaid.json.ok === false && unpaid.json.credits === 5, 'confirming a session nobody paid grants nothing');
 
@@ -137,7 +137,7 @@ async function pay(browser, url, tag, o) {
     const p2 = await pay(browser, r2.json.url, 'one', { cookie: asB.cookie, email: 'buyer@example.com', drop: true });
     if (!ok(p2.paid, 'paid it on Stripe\'s page; the return to the app was dropped (the buyer never came back)' + (p2.paid ? '' : ': STOPPED ' + p2.where))) throw new Error('the second payment could not be made: ' + p2.where);
     const sB = (await stripe('GET', '/checkout/sessions/' + rowB.session)).json;
-    ok(sB.payment_status === 'paid' && sB.amount_total === 499 && (await grants(B)).length === 0 && (await S.db.get('SELECT state FROM checkouts WHERE session = ?', [rowB.session])).state === 'open', 'Stripe says paid (' + sB.amount_total + ' ' + sB.currency + '); the app knows nothing yet: 0 grants, the checkout still "open"');
+    ok(sB.payment_status === 'paid' && sB.amount_total === 299 && (await grants(B)).length === 0 && (await S.db.get('SELECT state FROM checkouts WHERE session = ?', [rowB.session])).state === 'open', 'Stripe says paid (' + sB.amount_total + ' ' + sB.currency + '); the app knows nothing yet: 0 grants, the checkout still "open"');
     const m1 = await me(asB), gB = await grants(B);
     ok(m1.credits === 1 && m1.paid === true && gB.length === 1 && gB[0].ref === 'buy:' + rowB.session, 'the next GET /api/me found it: balance ' + m1.credits + ', paid ' + m1.paid + ', ' + gB.length + ' grant');
     const m2 = await me(asB), c2 = await call('GET', '/api/buy/confirm?session_id=' + rowB.session, null, asB);
